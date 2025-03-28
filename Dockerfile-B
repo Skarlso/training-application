@@ -1,0 +1,12 @@
+FROM golang:1.21.4-bookworm AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY main.go ./
+RUN go build -o training-application
+
+FROM ubuntu:22.04
+WORKDIR /app
+COPY --from=builder /src/training-application /app/training-application
+COPY conf/app.conf ./conf/
+ENTRYPOINT ./training-application
