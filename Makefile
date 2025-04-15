@@ -1,9 +1,9 @@
 IMAGE_REPOSITORY = quay.io/kubermatic-labs
 APPLICATION_NAME = training-application
 BUILD_VERSION = 3.0.0
-BUILD_VERSION_A = 3.0.0-A
-BUILD_VERSION_B = 3.0.0-B
-BUILD_VERSION_DISTROLESS = 3.0.0-distroless
+BUILD_VERSION_A = ${BUILD_VERSION}-A
+BUILD_VERSION_B = ${BUILD_VERSION}-B
+BUILD_VERSION_DISTROLESS = ${BUILD_VERSION}-distroless
 
 .PHONY: update-dependencies
 update-dependencies: 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -19,15 +20,17 @@ import (
 
 var alive = true
 var ready = true
+var delay = 0
 
 type Config struct {
 	Message string `properties:"message"`
+	Color   string `properties:"color"`
 }
 
-var props *properties.Properties
+var appConfig *properties.Properties
 
 func init() {
-	props = properties.MustLoadFile("./conf/app.conf", properties.UTF8)
+	appConfig = properties.MustLoadFile("./conf/app.conf", properties.UTF8)
 }
 
 func main() {
@@ -36,12 +39,30 @@ func main() {
 	go handleLifecycle()
 
 	http.HandleFunc("/", handleRoot)
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	})
 	http.HandleFunc("/liveness", handleLiveness)
 	http.HandleFunc("/readiness", handleReadiness)
 	http.HandleFunc("/downward_api", handleDownwardApi)
 	http.HandleFunc("/cats", handleCats)
 
 	log.Info("App started")
+	log.Info("AVAILABLE COMMANDS:")
+	log.Info("set ready: application readiness probe will be successful")
+	log.Info("set unready: application readiness probe will fail")
+	log.Info("set alive: application liveness probe will be successful")
+	log.Info("set dead: application liveness probe will fail")
+	log.Info("leak mem: leak memory")
+	log.Info("leak cpu: leak cpu")
+	log.Info("request <url>: request a url, eg 'request https://www.google.com'")
+	log.Info("delay <seconds>: set delay in seconds, eg 'delay 5'")
+	log.Info("AVAILABLE ENDPOINTS:")
+	log.Info("/: Root Endpoint, the output is depending on the application configuration")
+	log.Info("/liveness: liveness probe")
+	log.Info("/readiness: readiness probe")
+	log.Info("/downward_api: downward api, giving you metainfo, if available")
+	log.Info("/cats: get a random cat image from thecatapi.com")
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -77,7 +98,13 @@ func handleCommand(command string) {
 		leakCpu()
 	} else if strings.HasPrefix(command, "request ") {
 		url, _ := strings.CutPrefix(command, "request ")
+		log.Infof("Requesting URL '%s'", url)
 		request(url)
+	} else if strings.HasPrefix(command, "delay ") {
+		delayString, _ := strings.CutPrefix(command, "delay ")
+		delay, _ = strconv.Atoi(delayString)
+		// TODO error handling
+		log.Infof("Set delay to '%d' seconds", delay)
 	} else {
 		log.Infof("Unknown command '%s'", command)
 	}
@@ -150,14 +177,28 @@ func handleCats(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	message := props.GetString("message", "Property is not set")
-	fmt.Fprintf(w, "<!DOCTYPE html><htlml><body>")
-	fmt.Fprintf(w, "Message: %s<br>", message)
-	fmt.Fprintf(w, "Pod Name: %s<br>", os.Getenv("POD_NAME"))
-	fmt.Fprintf(w, "Pod IP: %s<br>", os.Getenv("POD_IP"))
-	fmt.Fprintf(w, "Live: %t<br>", alive)
-	fmt.Fprintf(w, "Ready: %t<br>", ready)
-	fmt.Fprintf(w, "</body></htlml>")
+	log.Info("Request to root")
+	if delay > 0 {
+		log.Infof("Delaying for %d seconds", delay)
+		for i := 0; i < delay; i++ {
+			log.Infof("Delayed Response for %d seconds", i+1)
+			time.Sleep(1 * time.Second)
+		}
+		log.Info("Finished delaying Response")
+	}
+	if ready {
+		message := appConfig.GetString("message", "App Configuration Property 'message' is not set")
+		color := appConfig.GetString("color", "App Configuration Property 'color' is not set")
+		fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
+		fmt.Fprintf(w, "<body style='background-color:%s;'>", color)
+		fmt.Fprintf(w, "Message: %s<br>", message)
+		fmt.Fprintf(w, "Application Liveness: %t<br>", alive)
+		fmt.Fprintf(w, "Application Readiness: %t<br>", ready)
+		fmt.Fprintf(w, "Application Delay: %d<br>", delay)
+		fmt.Fprintf(w, "</body></htlml>")
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
 }
 
 func handleLiveness(w http.ResponseWriter, r *http.Request) {
@@ -177,9 +218,11 @@ func handleReadiness(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDownwardApi(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<!DOCTYPE html><htlml><body>")
 	fmt.Fprintf(w, "MY_NODE_NAME: %s<br>", os.Getenv("MY_NODE_NAME"))
 	fmt.Fprintf(w, "MY_POD_NAME: %s<br>", os.Getenv("MY_POD_NAME"))
 	fmt.Fprintf(w, "MY_POD_IP: %s<br>", os.Getenv("MY_POD_IP"))
+	fmt.Fprintf(w, "</body></htlml>")
 }
 
 func handleLifecycle() {
