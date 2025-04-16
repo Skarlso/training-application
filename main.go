@@ -23,6 +23,8 @@ var ready = true
 var delay = 0
 
 type Config struct {
+	Name    string `properties:"name"`
+	Version string `properties:"version"`
 	Message string `properties:"message"`
 	Color   string `properties:"color"`
 }
@@ -187,10 +189,14 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		log.Info("Finished delaying Response")
 	}
 	if ready {
+		name := appConfig.GetString("name", "App Configuration Property 'name' is not set")
+		version := appConfig.GetString("version", "App Configuration Property 'version' is not set")
 		message := appConfig.GetString("message", "App Configuration Property 'message' is not set")
 		color := appConfig.GetString("color", "App Configuration Property 'color' is not set")
 		fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
 		fmt.Fprintf(w, "<body style='background-color:%s;'>", color)
+		fmt.Fprintf(w, "Name: %s<br>", name)
+		fmt.Fprintf(w, "Version: %s<br>", version)
 		fmt.Fprintf(w, "Message: %s<br>", message)
 		fmt.Fprintf(w, "Application Liveness: %t<br>", alive)
 		fmt.Fprintf(w, "Application Readiness: %t<br>", ready)
