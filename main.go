@@ -49,23 +49,30 @@ func main() {
 	http.HandleFunc("/downward_api", handleDownwardApi)
 	http.HandleFunc("/cats", handleCats)
 
-	log.Info("App started")
-	log.Info("AVAILABLE COMMANDS:")
-	log.Info("set ready: application readiness probe will be successful")
-	log.Info("set unready: application readiness probe will fail")
-	log.Info("set alive: application liveness probe will be successful")
-	log.Info("set dead: application liveness probe will fail")
-	log.Info("leak mem: leak memory")
-	log.Info("leak cpu: leak cpu")
-	log.Info("request <url>: request a url, eg 'request https://www.google.com'")
-	log.Info("delay <seconds>: set delay in seconds, eg 'delay 5'")
-	log.Info("AVAILABLE ENDPOINTS:")
-	log.Info("/: Root Endpoint, the output is depending on the application configuration")
-	log.Info("/liveness: liveness probe")
-	log.Info("/readiness: readiness probe")
-	log.Info("/downward_api: downward api, giving you metainfo, if available")
-	log.Info("/cats: get a random cat image from thecatapi.com")
+	log.Info("Application started")
+	log.Info("For getting help, type 'help'")
 	http.ListenAndServe(":8080", nil)
+}
+
+func logHelp() {
+	log.Info("Available Commands:")
+	log.Info("     help:              get info about available commands and endpoints")
+	log.Info("     init:              set readiness true, liveness true and delay 0")
+	log.Info("     config:            print out the current application configuration")
+	log.Info("     set ready:         application readiness probe will be successful")
+	log.Info("     set unready:       application readiness probe will fail")
+	log.Info("     set alive:         application liveness probe will be successful")
+	log.Info("     set dead:          application liveness probe will fail")
+	log.Info("     leak mem:          leak memory")
+	log.Info("     leak cpu:          leak cpu")
+	log.Info("     request <url>:     request a url, eg 'request https://www.google.com'")
+	log.Info("     delay <seconds>:   set delay in seconds, eg 'delay 5'")
+	log.Info("Available Endpoints:")
+	log.Info("     /:                 root endpoint, the output is depending on the application configuration")
+	log.Info("     /liveness:         liveness probe")
+	log.Info("     /readiness:        readiness probe")
+	log.Info("     /downward_api:     downward api, giving you metainfo, if available")
+	log.Info("     /cats:             get a random cat image from thecatapi.com")
 }
 
 func handleStdin() {
@@ -80,7 +87,23 @@ func handleStdin() {
 }
 
 func handleCommand(command string) {
-	if command == "set ready" {
+	if command == "help" {
+		logHelp()
+	} else if command == "init" {
+		log.Info("Set readiness true, liveness true and delay 0")
+		ready = true
+		alive = true
+		delay = 0
+	} else if command == "config" {
+		log.Info("Application Configuration:")
+		log.Infof("     ready:      %v", ready)
+		log.Infof("     alive:      %v", alive)
+		log.Infof("     delay:      %d", delay)
+		log.Infof("     name:       %s", appConfig.GetString("name", "Application Configuration Property 'name' is not set"))
+		log.Infof("     version:    %s", appConfig.GetString("version", "Application Configuration Property 'version' is not set"))
+		log.Infof("     message:    %s", appConfig.GetString("message", "Application Configuration Property 'message' is not set"))
+		log.Infof("     color:      %s", appConfig.GetString("color", "Application Configuration Property 'color' is not set"))
+	} else if command == "set ready" {
 		log.Info("Set application to ready")
 		ready = true
 	} else if command == "set unready" {
@@ -189,10 +212,10 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		log.Info("Finished delaying Response")
 	}
 	if ready {
-		name := appConfig.GetString("name", "App Configuration Property 'name' is not set")
-		version := appConfig.GetString("version", "App Configuration Property 'version' is not set")
-		message := appConfig.GetString("message", "App Configuration Property 'message' is not set")
-		color := appConfig.GetString("color", "App Configuration Property 'color' is not set")
+		name := appConfig.GetString("name", "Application Configuration Property 'name' is not set")
+		version := appConfig.GetString("version", "Application Configuration Property 'version' is not set")
+		message := appConfig.GetString("message", "Application Configuration Property 'message' is not set")
+		color := appConfig.GetString("color", "Application Configuration Property 'color' is not set")
 		fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
 		fmt.Fprintf(w, "<body style='background-color:%s;'>", color)
 		fmt.Fprintf(w, "Name: %s<br>", name)
