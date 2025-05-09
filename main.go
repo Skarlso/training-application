@@ -20,7 +20,8 @@ import (
 
 var alive = true
 var ready = true
-var delay = 0
+var rootDelay = 0
+var rootEnabled = true
 
 type Config struct {
 	Name    string `properties:"name"`
@@ -56,23 +57,25 @@ func main() {
 
 func logHelp() {
 	log.Info("Available Commands:")
-	log.Info("     help:              get info about available commands and endpoints")
-	log.Info("     init:              set readiness true, liveness true and delay 0")
-	log.Info("     config:            print out the current application configuration")
-	log.Info("     set ready:         application readiness probe will be successful")
-	log.Info("     set unready:       application readiness probe will fail")
-	log.Info("     set alive:         application liveness probe will be successful")
-	log.Info("     set dead:          application liveness probe will fail")
-	log.Info("     leak mem:          leak memory")
-	log.Info("     leak cpu:          leak cpu")
-	log.Info("     request <url>:     request a url, eg 'request https://www.google.com'")
-	log.Info("     delay <seconds>:   set delay in seconds, eg 'delay 5'")
+	log.Info("     help:                get info about available commands and endpoints")
+	log.Info("     init:                set readiness true, liveness true and delay 0")
+	log.Info("     config:              print out the current application configuration")
+	log.Info("     set ready:           application readiness probe will be successful")
+	log.Info("     set unready:         application readiness probe will fail")
+	log.Info("     set alive:           application liveness probe will be successful")
+	log.Info("     set dead:            application liveness probe will fail")
+	log.Info("     leak mem:            leak memory")
+	log.Info("     leak cpu:            leak cpu")
+	log.Info("     request <url>:       request a url, eg 'request https://www.google.com'")
+	log.Info("     enable /:            enable the root endpoint ('/')")
+	log.Info("     disable /:           disable the root endpoint ('/')")
+	log.Info("     delay / <seconds>:   set delay for the root endpoint ('/') in seconds, eg 'delay / 5'")
 	log.Info("Available Endpoints:")
-	log.Info("     /:                 root endpoint, the output is depending on the application configuration")
-	log.Info("     /liveness:         liveness probe")
-	log.Info("     /readiness:        readiness probe")
-	log.Info("     /downward_api:     downward api, giving you metainfo, if available")
-	log.Info("     /cats:             get a random cat image from thecatapi.com")
+	log.Info("     /:                   root endpoint, the output is depending on the application configuration")
+	log.Info("     /liveness:           liveness probe")
+	log.Info("     /readiness:          readiness probe")
+	log.Info("     /downward_api:       downward api, giving you metainfo, if available")
+	log.Info("     /cats:               get a random cat image from thecatapi.com")
 }
 
 func handleStdin() {
@@ -90,31 +93,33 @@ func handleCommand(command string) {
 	if command == "help" {
 		logHelp()
 	} else if command == "init" {
-		log.Info("Set readiness true, liveness true and delay 0")
 		ready = true
 		alive = true
-		delay = 0
+		rootDelay = 0
+		rootEnabled = true
+		log.Info("Re-initialized the application")
 	} else if command == "config" {
 		log.Info("Application Configuration:")
 		log.Infof("     ready:      %v", ready)
 		log.Infof("     alive:      %v", alive)
-		log.Infof("     delay:      %d", delay)
+		log.Infof("     / delay:    %d", rootDelay)
+		log.Infof("     / enabled:  %v", rootEnabled)
 		log.Infof("     name:       %s", appConfig.GetString("name", "Application Configuration Property 'name' is not set"))
 		log.Infof("     version:    %s", appConfig.GetString("version", "Application Configuration Property 'version' is not set"))
 		log.Infof("     message:    %s", appConfig.GetString("message", "Application Configuration Property 'message' is not set"))
 		log.Infof("     color:      %s", appConfig.GetString("color", "Application Configuration Property 'color' is not set"))
 	} else if command == "set ready" {
-		log.Info("Set application to ready")
 		ready = true
+		log.Info("Set the application to ready")
 	} else if command == "set unready" {
-		log.Info("Set application to unready")
 		ready = false
+		log.Info("Set the application to unready")
 	} else if command == "set alive" {
-		log.Info("Set application to alive")
 		alive = true
+		log.Info("Set the application to alive")
 	} else if command == "set dead" {
-		log.Info("Set application to dead")
 		alive = false
+		log.Info("Set the application to dead")
 	} else if command == "leak mem" {
 		log.Info("Leaking Memory")
 		leakMem()
@@ -125,11 +130,17 @@ func handleCommand(command string) {
 		url, _ := strings.CutPrefix(command, "request ")
 		log.Infof("Requesting URL '%s'", url)
 		request(url)
-	} else if strings.HasPrefix(command, "delay ") {
-		delayString, _ := strings.CutPrefix(command, "delay ")
-		delay, _ = strconv.Atoi(delayString)
+	} else if strings.HasPrefix(command, "delay / ") {
+		delayString, _ := strings.CutPrefix(command, "delay / ")
+		rootDelay, _ = strconv.Atoi(delayString)
 		// TODO error handling
-		log.Infof("Set delay to '%d' seconds", delay)
+		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", rootDelay)
+	} else if strings.HasPrefix(command, "enable /") {
+		rootEnabled = true
+		log.Info("Enabled the root endpoint ('/')")
+	} else if strings.HasPrefix(command, "disable /") {
+		rootEnabled = false
+		log.Info("Disabled the root endpoint ('/')")
 	} else {
 		log.Infof("Unknown command '%s'", command)
 	}
@@ -202,16 +213,19 @@ func handleCats(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	log.Info("Request to root")
-	if delay > 0 {
-		log.Infof("Delaying for %d seconds", delay)
-		for i := 0; i < delay; i++ {
-			log.Infof("Delayed Response for %d seconds", i+1)
-			time.Sleep(1 * time.Second)
+	log.Info("Request to root endpoint ('/')")
+	if !rootEnabled {
+		log.Info("The root endpoint ('/') is disabled, responding with 503 (StatusServiceUnavailable)")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		if rootDelay > 0 {
+			log.Infof("Delaying for %d seconds", rootDelay)
+			for i := 0; i < rootDelay; i++ {
+				log.Infof("Delayed Response for %d seconds", i+1)
+				time.Sleep(1 * time.Second)
+			}
+			log.Info("Finished delaying Response")
 		}
-		log.Info("Finished delaying Response")
-	}
-	if ready {
 		name := appConfig.GetString("name", "Application Configuration Property 'name' is not set")
 		version := appConfig.GetString("version", "Application Configuration Property 'version' is not set")
 		message := appConfig.GetString("message", "Application Configuration Property 'message' is not set")
@@ -223,10 +237,12 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Message: %s<br>", message)
 		fmt.Fprintf(w, "Application Liveness: %t<br>", alive)
 		fmt.Fprintf(w, "Application Readiness: %t<br>", ready)
-		fmt.Fprintf(w, "Application Delay: %d<br>", delay)
+		fmt.Fprintf(w, "Root endpoint ('/') enabled: %v<br>", rootEnabled)
+		fmt.Fprintf(w, "Delay of root endpoint ('/'): %d<br>", rootDelay)
+		if rootDelay > 0 {
+			fmt.Fprintf(w, "(Response was delayed for %d seconds)", rootDelay)
+		}
 		fmt.Fprintf(w, "</body></htlml>")
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }
 
