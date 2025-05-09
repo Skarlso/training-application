@@ -304,6 +304,7 @@ func leakCpu() {
 
 	f, err := os.Open(os.DevNull)
 	if err != nil {
+		log.Errorf("Error on opening /dev/null: %s", err)
 		panic(err)
 	}
 	defer f.Close()
