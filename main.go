@@ -18,22 +18,134 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var alive = true
-var ready = true
-var rootDelay = 0
-var rootEnabled = true
-
-type Config struct {
+type FileConfig struct {
 	Name    string `properties:"name"`
 	Version string `properties:"version"`
 	Message string `properties:"message"`
 	Color   string `properties:"color"`
+	CatMode bool   `properties:"catMode"`
 }
 
-var appConfig *properties.Properties
+type appConfig struct {
+	Alive         bool
+	Ready         bool
+	RootDelay     int
+	Name          string
+	Version       string
+	Message       string
+	Color         string
+	NodeName      string
+	ContainerName string
+	PodNamespace  string
+	PodName       string
+	PodIP         string
+	CatImageUrl   string
+}
+
+func (appConfig *appConfig) logAppConfig() {
+	log.Info("Application Configuration:")
+	log.Infof("     ready:           %v", appConfig.Ready)
+	log.Infof("     alive:           %v", appConfig.Alive)
+	log.Infof("     / delay:         %d", appConfig.RootDelay)
+	log.Infof("     name:            %s", appConfig.Name)
+	log.Infof("     version:         %s", appConfig.Version)
+	log.Infof("     message:         %s", appConfig.Message)
+	log.Infof("     color:           %s", appConfig.Color)
+	log.Infof("     nodeName:        %s", appConfig.NodeName)
+	log.Infof("     containerName:   %s", appConfig.ContainerName)
+	log.Infof("     podNamespace:    %s", appConfig.PodNamespace)
+	log.Infof("     podName:         %s", appConfig.PodName)
+	log.Infof("     podIP:           %s", appConfig.PodIP)
+	log.Infof("     catImageUrl:     %s", appConfig.CatImageUrl)
+}
+
+var config *appConfig
 
 func init() {
-	appConfig = properties.MustLoadFile("./conf/app.conf", properties.UTF8)
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
+	log.Info("Initializing the application configuration")
+	config = newAppConfig()
+}
+
+func newAppConfig() *appConfig {
+
+	var err error
+
+	ret := &appConfig{
+		Alive:     true,
+		Ready:     true,
+		RootDelay: 0,
+	}
+
+	fileConfig := properties.MustLoadFile("./conf/app.conf", properties.UTF8)
+	ret.Name = initAppConfigValue(fileConfig, "name", "APP_NAME", "not set")
+	ret.Version = initAppConfigValue(fileConfig, "version", "APP_VERSION", "not set")
+	ret.Message = initAppConfigValue(fileConfig, "message", "APP_MESSAGE", "not set")
+	ret.Color = initAppConfigValue(fileConfig, "color", "APP_COLOR", "not set")
+	ret.NodeName = initAppConfigValue(fileConfig, "nodeName", "NODE_NAME", "")
+	ret.ContainerName = initAppConfigValue(fileConfig, "containerName", "POD_NAME", "")
+	ret.PodNamespace = initAppConfigValue(fileConfig, "podNamespace", "POD_NAMESPACE", "")
+	ret.PodName = initAppConfigValue(fileConfig, "podName", "POD_NAME", "")
+	ret.PodIP = initAppConfigValue(fileConfig, "podIP", "POD_IP", "")
+
+	catMode := fileConfig.GetBool("catMode", false)
+	catModeEnvVarVal, catModeEnvVarValExists := os.LookupEnv("APP_CAT_MODE")
+	if catModeEnvVarValExists {
+		catMode, err = strconv.ParseBool(catModeEnvVarVal)
+		if err != nil {
+			log.Errorf("could not convert APP_CAT_MODE '%s' to bool: %s", catModeEnvVarVal, err)
+			catMode = false
+		}
+	}
+	if catMode {
+		ret.CatImageUrl = getCat()
+	}
+	ret.logAppConfig()
+	return ret
+}
+
+func initAppConfigValue(fileConfig *properties.Properties, fileConfigProperty, envVarName, defaultValue string) string {
+	ret := fileConfig.GetString(fileConfigProperty, "")
+	envVarValue, envVarExists := os.LookupEnv(envVarName)
+	if envVarExists {
+		ret = envVarValue
+	}
+	if ret == "" {
+		ret = defaultValue
+	}
+	return ret
+}
+
+func getCat() string {
+
+	type catStruct struct {
+		Url string `json:"url"`
+	}
+
+	resp, err := http.Get("https://api.thecatapi.com/v1/images/search")
+	if err != nil {
+		log.Errorf("Error on getting the response: '%s'", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Error on reading the response body: '%s'", err)
+		return ""
+	}
+	bodyString := string(bodyBytes)
+	log.Infof("Got response from cat api: %s", bodyString)
+
+	var cats []catStruct
+	json.Unmarshal(bodyBytes, &cats)
+	if len(cats) == 0 {
+		log.Errorf("No cat found in response from cat api")
+		return ""
+	}
+	return cats[0].Url
 }
 
 func main() {
@@ -47,12 +159,14 @@ func main() {
 	})
 	http.HandleFunc("/liveness", handleLiveness)
 	http.HandleFunc("/readiness", handleReadiness)
-	http.HandleFunc("/downward_api", handleDownwardApi)
-	http.HandleFunc("/cats", handleCats)
 
-	log.Info("Application started")
+	log.Info("Application started, listenting on port 8080")
 	log.Info("For getting help, type 'help'")
-	http.ListenAndServe(":8080", nil)
+
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Errorf("Error on starting the server: '%s'", err)
+	}
 }
 
 func logHelp() {
@@ -67,15 +181,11 @@ func logHelp() {
 	log.Info("     leak mem:            leak memory")
 	log.Info("     leak cpu:            leak cpu")
 	log.Info("     request <url>:       request a url, eg 'request https://www.google.com'")
-	log.Info("     enable /:            enable the root endpoint ('/')")
-	log.Info("     disable /:           disable the root endpoint ('/')")
 	log.Info("     delay / <seconds>:   set delay for the root endpoint ('/') in seconds, eg 'delay / 5'")
 	log.Info("Available Endpoints:")
 	log.Info("     /:                   root endpoint, the output is depending on the application configuration")
 	log.Info("     /liveness:           liveness probe")
 	log.Info("     /readiness:          readiness probe")
-	log.Info("     /downward_api:       downward api, giving you metainfo, if available")
-	log.Info("     /cats:               get a random cat image from thecatapi.com")
 }
 
 func handleStdin() {
@@ -93,32 +203,21 @@ func handleCommand(command string) {
 	if command == "help" {
 		logHelp()
 	} else if command == "init" {
-		ready = true
-		alive = true
-		rootDelay = 0
-		rootEnabled = true
-		log.Info("Re-initialized the application")
+		log.Info("Re-initializing the application configuration")
+		config = newAppConfig()
 	} else if command == "config" {
-		log.Info("Application Configuration:")
-		log.Infof("     ready:      %v", ready)
-		log.Infof("     alive:      %v", alive)
-		log.Infof("     / delay:    %d", rootDelay)
-		log.Infof("     / enabled:  %v", rootEnabled)
-		log.Infof("     name:       %s", appConfig.GetString("name", "Application Configuration Property 'name' is not set"))
-		log.Infof("     version:    %s", appConfig.GetString("version", "Application Configuration Property 'version' is not set"))
-		log.Infof("     message:    %s", appConfig.GetString("message", "Application Configuration Property 'message' is not set"))
-		log.Infof("     color:      %s", appConfig.GetString("color", "Application Configuration Property 'color' is not set"))
+		config.logAppConfig()
 	} else if command == "set ready" {
-		ready = true
+		config.Ready = true
 		log.Info("Set the application to ready")
 	} else if command == "set unready" {
-		ready = false
+		config.Ready = false
 		log.Info("Set the application to unready")
 	} else if command == "set alive" {
-		alive = true
+		config.Alive = true
 		log.Info("Set the application to alive")
 	} else if command == "set dead" {
-		alive = false
+		config.Alive = false
 		log.Info("Set the application to dead")
 	} else if command == "leak mem" {
 		log.Info("Leaking Memory")
@@ -132,15 +231,9 @@ func handleCommand(command string) {
 		request(url)
 	} else if strings.HasPrefix(command, "delay / ") {
 		delayString, _ := strings.CutPrefix(command, "delay / ")
-		rootDelay, _ = strconv.Atoi(delayString)
+		config.RootDelay, _ = strconv.Atoi(delayString)
 		// TODO error handling
-		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", rootDelay)
-	} else if strings.HasPrefix(command, "enable /") {
-		rootEnabled = true
-		log.Info("Enabled the root endpoint ('/')")
-	} else if strings.HasPrefix(command, "disable /") {
-		rootEnabled = false
-		log.Info("Disabled the root endpoint ('/')")
+		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", config.RootDelay)
 	} else {
 		log.Infof("Unknown command '%s'", command)
 	}
@@ -184,90 +277,53 @@ func request(url string) {
 	log.Infof("Response Body: %s", bodyString)
 }
 
-func handleCats(w http.ResponseWriter, r *http.Request) {
-
-	type catStruct struct {
-		Url string `json:"url"`
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	log.Info("Request to root endpoint ('/')")
+	if config.RootDelay > 0 {
+		log.Infof("Delaying for %d seconds", config.RootDelay)
+		for i := 0; i < config.RootDelay; i++ {
+			log.Infof("Delayed Response for %d seconds", i+1)
+			time.Sleep(1 * time.Second)
+		}
+		log.Info("Finished delaying Response")
 	}
-
-	resp, err := http.Get("https://api.thecatapi.com/v1/images/search")
-	if err != nil {
-		log.Errorf("Error on getting the response: '%s'", err)
+	fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
+	fmt.Fprintf(w, "<body style='background-color:%s;'>", config.Color)
+	if config.RootDelay > 0 {
+		fmt.Fprintf(w, "(Response was delayed for %d seconds)", config.RootDelay)
 	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Errorf("Error on reading the response body: '%s'", err)
+	fmt.Fprintf(w, "Name: %s<br>", config.Name)
+	fmt.Fprintf(w, "Version: %s<br>", config.Version)
+	fmt.Fprintf(w, "Message: %s<br>", config.Message)
+	fmt.Fprintf(w, "Application Liveness: %t<br>", config.Alive)
+	fmt.Fprintf(w, "Application Readiness: %t<br>", config.Ready)
+	fmt.Fprintf(w, "Delay of root endpoint ('/'): %d<br>", config.RootDelay)
+	if config.CatImageUrl != "" {
+		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", config.CatImageUrl)
 	}
-	bodyString := string(bodyBytes)
-	log.Infof("Got response from cat api: %s", bodyString)
-
-	var cats []catStruct
-	json.Unmarshal(bodyBytes, &cats)
-	cat := cats[0].Url
-
-	fmt.Fprintf(w, "<!DOCTYPE html><htlml><body>")
-	fmt.Fprintf(w, "<img src='%s'></img>", cat)
 	fmt.Fprintf(w, "</body></htlml>")
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	log.Info("Request to root endpoint ('/')")
-	if !rootEnabled {
-		log.Info("The root endpoint ('/') is disabled, responding with 503 (StatusServiceUnavailable)")
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		if rootDelay > 0 {
-			log.Infof("Delaying for %d seconds", rootDelay)
-			for i := 0; i < rootDelay; i++ {
-				log.Infof("Delayed Response for %d seconds", i+1)
-				time.Sleep(1 * time.Second)
-			}
-			log.Info("Finished delaying Response")
-		}
-		name := appConfig.GetString("name", "Application Configuration Property 'name' is not set")
-		version := appConfig.GetString("version", "Application Configuration Property 'version' is not set")
-		message := appConfig.GetString("message", "Application Configuration Property 'message' is not set")
-		color := appConfig.GetString("color", "Application Configuration Property 'color' is not set")
-		fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
-		fmt.Fprintf(w, "<body style='background-color:%s;'>", color)
-		fmt.Fprintf(w, "Name: %s<br>", name)
-		fmt.Fprintf(w, "Version: %s<br>", version)
-		fmt.Fprintf(w, "Message: %s<br>", message)
-		fmt.Fprintf(w, "Application Liveness: %t<br>", alive)
-		fmt.Fprintf(w, "Application Readiness: %t<br>", ready)
-		fmt.Fprintf(w, "Root endpoint ('/') enabled: %v<br>", rootEnabled)
-		fmt.Fprintf(w, "Delay of root endpoint ('/'): %d<br>", rootDelay)
-		if rootDelay > 0 {
-			fmt.Fprintf(w, "(Response was delayed for %d seconds)", rootDelay)
-		}
-		fmt.Fprintf(w, "</body></htlml>")
-	}
-}
-
 func handleLiveness(w http.ResponseWriter, r *http.Request) {
-	if alive {
+	log.Info("Request to liveness endpoint ('/liveness')")
+	if config.Alive {
 		w.WriteHeader(http.StatusOK)
+		log.Info("Liveness endpoint ('/liveness') responded with Status Code 200 OK")
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Info("Liveness endpoint ('/liveness') responded with Status Code 503 Service Unavailable")
 	}
 }
 
 func handleReadiness(w http.ResponseWriter, r *http.Request) {
-	if ready {
+	log.Info("Request to readiness endpoint ('/readiness')")
+	if config.Ready {
 		w.WriteHeader(http.StatusOK)
+		log.Info("Readiness endpoint ('/readiness') responded with Status Code 200 OK")
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
+		log.Info("Readiness endpoint ('/readiness') responded with Status Code 503 Service Unavailable")
 	}
-}
-
-func handleDownwardApi(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<!DOCTYPE html><htlml><body>")
-	fmt.Fprintf(w, "MY_NODE_NAME: %s<br>", os.Getenv("MY_NODE_NAME"))
-	fmt.Fprintf(w, "MY_POD_NAME: %s<br>", os.Getenv("MY_POD_NAME"))
-	fmt.Fprintf(w, "MY_POD_IP: %s<br>", os.Getenv("MY_POD_IP"))
-	fmt.Fprintf(w, "</body></htlml>")
 }
 
 func handleLifecycle() {
