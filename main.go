@@ -65,6 +65,13 @@ func init() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
+
+	log.Info("Application is starting up")
+	for i := 0; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		log.Infof("Starting the application took %d seconds", i+1)
+	}
+
 	log.Info("Initializing the application configuration")
 	config = newAppConfig()
 }
@@ -85,7 +92,7 @@ func newAppConfig() *appConfig {
 	ret.Message = initAppConfigValue(fileConfig, "message", "APP_MESSAGE", "not set")
 	ret.Color = initAppConfigValue(fileConfig, "color", "APP_COLOR", "not set")
 	ret.NodeName = initAppConfigValue(fileConfig, "nodeName", "NODE_NAME", "")
-	ret.ContainerName = initAppConfigValue(fileConfig, "containerName", "POD_NAME", "")
+	ret.ContainerName = initAppConfigValue(fileConfig, "containerName", "CONTAINER_NAME", "")
 	ret.PodNamespace = initAppConfigValue(fileConfig, "podNamespace", "POD_NAMESPACE", "")
 	ret.PodName = initAppConfigValue(fileConfig, "podName", "POD_NAME", "")
 	ret.PodIP = initAppConfigValue(fileConfig, "podIP", "POD_IP", "")
@@ -100,7 +107,10 @@ func newAppConfig() *appConfig {
 		}
 	}
 	if catMode {
-		ret.CatImageUrl = getCat()
+		ret.CatImageUrl, err = getCat()
+		if err != nil {
+			log.Error("could not obtain cat image", err)
+		}
 	}
 	ret.logAppConfig()
 	return ret
@@ -118,7 +128,8 @@ func initAppConfigValue(fileConfig *properties.Properties, fileConfigProperty, e
 	return ret
 }
 
-func getCat() string {
+func getCat() (string, error) {
+	// also string vars => cant they be nil?
 
 	type catStruct struct {
 		Url string `json:"url"`
@@ -126,15 +137,14 @@ func getCat() string {
 
 	resp, err := http.Get("https://api.thecatapi.com/v1/images/search")
 	if err != nil {
-		log.Errorf("Error on getting the response: '%s'", err)
-		return ""
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("Error on reading the response body: '%s'", err)
-		return ""
+		return "", err
 	}
 	bodyString := string(bodyBytes)
 	log.Infof("Got response from cat api: %s", bodyString)
@@ -142,10 +152,10 @@ func getCat() string {
 	var cats []catStruct
 	json.Unmarshal(bodyBytes, &cats)
 	if len(cats) == 0 {
-		log.Errorf("No cat found in response from cat api")
-		return ""
+		return "", err
 	}
-	return cats[0].Url
+
+	return cats[0].Url, nil
 }
 
 func main() {
@@ -191,15 +201,22 @@ func logHelp() {
 func handleStdin() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		text, _ := reader.ReadString('\n')
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			log.Errorf("Error on reading from stdin: '%s'", err)
+		}
 		text = strings.Replace(text, "\n", "", -1)
 		if text != "" {
-			handleCommand(text)
+			err = executeCommand(text)
+			if err != nil {
+				log.Errorf("Error on handling command '%s': %s", text, err)
+			}
 		}
 	}
 }
 
-func handleCommand(command string) {
+func executeCommand(command string) error {
+
 	if command == "help" {
 		logHelp()
 	} else if command == "init" {
@@ -224,26 +241,36 @@ func handleCommand(command string) {
 		leakMem()
 	} else if command == "leak cpu" {
 		log.Info("Leaking CPU")
-		leakCpu()
+		err := leakCpu()
+		if err != nil {
+			return fmt.Errorf("error on leaking CPU: %s", err)
+		}
 	} else if strings.HasPrefix(command, "request ") {
 		url, _ := strings.CutPrefix(command, "request ")
 		log.Infof("Requesting URL '%s'", url)
-		request(url)
+		err := request(url)
+		if err != nil {
+			return fmt.Errorf("error on requesting URL '%s': %s", url, err)
+		}
 	} else if strings.HasPrefix(command, "delay / ") {
 		delayString, _ := strings.CutPrefix(command, "delay / ")
-		config.RootDelay, _ = strconv.Atoi(delayString)
-		// TODO error handling
+		var err error
+		config.RootDelay, err = strconv.Atoi(delayString)
+		if err != nil {
+			return fmt.Errorf("error on converting delay string '%s' to int: %s", delayString, err)
+		}
 		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", config.RootDelay)
 	} else {
-		log.Infof("Unknown command '%s'", command)
+		return fmt.Errorf("unknown command '%s'", command)
 	}
+	return nil
 }
 
-func request(url string) {
+func request(url string) error {
 	log.Infof("Request '%s'", url)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Errorf("Error on getting the response: '%s'", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -268,13 +295,14 @@ func request(url string) {
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("Error on reading the response body: '%s'", err)
+		return err
 	}
 	bodyString := string(bodyBytes)
 	if len(bodyString) >= 100 {
 		bodyString = bodyString[:100]
 	}
 	log.Infof("Response Body: %s", bodyString)
+	return nil
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -328,28 +356,32 @@ func handleReadiness(w http.ResponseWriter, r *http.Request) {
 
 func handleLifecycle() {
 	signalChanel := make(chan os.Signal, 1)
-	signal.Notify(signalChanel, syscall.SIGTERM)
+	signal.Notify(signalChanel, syscall.SIGTERM, syscall.SIGKILL)
 	exitChanel := make(chan int)
-	go func() {
-		for {
-			s := <-signalChanel
-			if s == syscall.SIGTERM {
-				log.Info("Got SIGTERM signal")
-				log.Info("Starting Graceful Shutdown")
-				for i := 0; i < 10; i++ {
-					log.Infof("Graceful shutdown took %d seconds", i)
-					time.Sleep(1 * time.Second)
-				}
-				log.Info("Graceful Shutdown has finished")
-				exitChanel <- 0
-			} else {
-				log.Info("Got unknown signal")
-				exitChanel <- 1
-			}
-		}
-	}()
+	go handleSigterm(signalChanel, exitChanel)
 	exitCode := <-exitChanel
 	os.Exit(exitCode)
+}
+
+func handleSigterm(signalChanel chan os.Signal, exitChanel chan int) {
+	for {
+		signal := <-signalChanel
+		if signal == syscall.SIGTERM {
+			log.Info("Got SIGTERM signal")
+			log.Info("Starting Graceful Shutdown, this will take 10 seconds")
+			for i := 0; i < 10; i++ {
+				time.Sleep(1 * time.Second)
+				log.Infof("Graceful shutdown took %d seconds", i+1)
+			}
+			log.Info("Graceful Shutdown has finished")
+			exitChanel <- 0
+		} else if signal == syscall.SIGKILL {
+			log.Info("Got SIGKILL signal")
+		} else {
+			log.Errorf("Got unknown signal '%s'", signal)
+			exitChanel <- 1
+		}
+	}
 }
 
 func leakMem() {
@@ -370,28 +402,33 @@ func leakMem() {
 	}
 }
 
-func leakCpu() {
+func leakCpu() error {
 
 	// TODO is this really the smartest way to create a CPU leak?
 
 	f, err := os.Open(os.DevNull)
 	if err != nil {
 		log.Errorf("Error on opening /dev/null: %s", err)
-		panic(err)
+		return err
 	}
 	defer f.Close()
-
 	n := runtime.NumCPU()
 	runtime.GOMAXPROCS(n)
 
 	for i := 0; i < n; i++ {
 		go func() {
 			for {
+				var usage syscall.Rusage
+				syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
+				fmt.Printf("User CPU Time: %v\n", usage.Utime)
+				fmt.Printf("System CPU Time: %v\n", usage.Stime)
 				fmt.Fprintf(f, ".")
 			}
 		}()
 	}
 
-	time.Sleep(10 * time.Second)
+	// TODO do I need this?
+	// time.Sleep(10 * time.Second)
+	return nil
 
 }

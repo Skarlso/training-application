@@ -21,11 +21,13 @@ do I need the caller? eg if the request is coming from k8s or istio?
 - app.conf
 - env vars
 
-# TODO add an application parameter to be used as Docker CMD or K8s ARGS
-
-- debug level
-- config file path
-
 # loggging issue
 
 - not to stdout only in some file
+
+# pass in version into docker build?
+
+## Training Application
+
+show pid in root
+sigterm state in root

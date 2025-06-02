@@ -15,7 +15,7 @@ This application is used in the [cloud-native training catalogue](https://www.cl
 | Command             | Description                                                         |
 | ------------------- | ------------------------------------------------------------------- |
 | `help`              | Get info about available commands and endpoints                     |
-| `init`              | Set readiness true, liveness true and delay 0                       |
+| `init`              | Re-initialize the application                                       |
 | `config`            | Print out the current application configuration                     |
 | `set ready`         | Application readiness probe will be successful                      |
 | `set unready`       | Application readiness probe will fail                               |
@@ -23,5 +23,5 @@ This application is used in the [cloud-native training catalogue](https://www.cl
 | `set dead`          | Application liveness probe will fail                                |
 | `leak mem`          | Leak memory                                                         |
 | `leak cpu`          | Leak CPU                                                            |
-| `request <url>`     | Request a URL, e.g., `request https://www.google.com`               |
+| `request <url>`     | Request a URL, e.g., `request https://www.kubermatic.com/`          |
 | `delay / <seconds>` | Set delay for the root endpoint (`/`) in seconds, e.g., `delay / 5` |

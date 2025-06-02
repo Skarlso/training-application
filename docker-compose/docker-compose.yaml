@@ -1,8 +1,0 @@
-services:
-  training-application:
-    image: quay.io/kubermatic-labs/training-application:3.0.0
-    container_name: training-application
-    volumes:
-      - ./app.conf:/app/conf/app.conf:ro
-    ports:
-      - "8080:8080"
