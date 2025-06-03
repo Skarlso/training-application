@@ -1,6 +1,6 @@
 module github.com/cloudnativetrainings/training-application
 
-go 1.23.0
+go 1.24.3
 
 require (
 	github.com/magiconair/properties v1.8.10

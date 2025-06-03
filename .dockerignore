@@ -3,3 +3,4 @@ Dockerfile*
 training-application
 makefile
 README.md
+application.log

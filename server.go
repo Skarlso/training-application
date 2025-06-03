@@ -1,19 +1,19 @@
-package server
+package main
 
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
-	conf "github.com/cloudnativetrainings/training-application/conf"
 	log "github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	config *conf.AppConfig
+	config *AppConfig
 }
 
-func NewServer(appConfig *conf.AppConfig) *Server {
+func NewServer(appConfig *AppConfig) *Server {
 
 	server := &Server{
 		config: appConfig,
@@ -55,10 +55,11 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Name: %s<br>", s.config.Name)
 	fmt.Fprintf(w, "Version: %s<br>", s.config.Version)
 	fmt.Fprintf(w, "Message: %s<br>", s.config.Message)
-	fmt.Fprintf(w, "LogToFileOnly: %v<br>", s.config.LogToFileOnly)
+	fmt.Fprintf(w, "Log only to file: %v<br>", s.config.LogToFileOnly)
 	fmt.Fprintf(w, "Application Liveness: %t<br>", s.config.Alive)
 	fmt.Fprintf(w, "Application Readiness: %t<br>", s.config.Ready)
 	fmt.Fprintf(w, "Delay of root endpoint ('/'): %d<br>", s.config.RootDelay)
+	fmt.Fprintf(w, "Process ID of the application: %d<br>", os.Getpid())
 	if s.config.CatImageUrl != "" {
 		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", s.config.CatImageUrl)
 	}

@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"bufio"
@@ -12,15 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	conf "github.com/cloudnativetrainings/training-application/conf"
 	log "github.com/sirupsen/logrus"
 )
 
 type Cli struct {
-	config *conf.AppConfig
+	config *AppConfig
 }
 
-func NewCli(appConfig *conf.AppConfig) *Cli {
+func NewCli(appConfig *AppConfig) *Cli {
 	return &Cli{
 		appConfig,
 	}

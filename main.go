@@ -6,14 +6,10 @@ import (
 	"syscall"
 	"time"
 
-	cli "github.com/cloudnativetrainings/training-application/cli"
-	conf "github.com/cloudnativetrainings/training-application/conf"
-	server "github.com/cloudnativetrainings/training-application/server"
-
 	log "github.com/sirupsen/logrus"
 )
 
-var config *conf.AppConfig
+var config *AppConfig
 var configFilePath string
 
 func init() {
@@ -27,9 +23,19 @@ func main() {
 	configFilePath = getConfigFilePath()
 
 	log.Info("Initializing the application configuration")
-	config = conf.NewAppConfig(configFilePath)
+	config = NewAppConfig(configFilePath)
 	config.InitAppConfig()
 	config.LogAppConfig()
+
+	if config.LogToFileOnly {
+		log.Warn("Switching to log file only mode, subsequent logs will happen in the file 'application.log'")
+		file, err := os.OpenFile("application.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		log.SetOutput(file)
+	}
 
 	log.Info("Application is starting up")
 	for i := 0; i < 10; i++ {
@@ -37,12 +43,12 @@ func main() {
 		log.Infof("Starting the application took %d seconds", i+1)
 	}
 
-	cli := cli.NewCli(config)
+	cli := NewCli(config)
 
 	go cli.HandleStdin()
 	go handleLifecycle()
 
-	server := server.NewServer(config)
+	server := NewServer(config)
 
 	log.Info("Application started, listenting on port 8080")
 	log.Info("For getting help, type 'help'")
