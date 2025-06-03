@@ -26,10 +26,6 @@ docker-build: build
 docker-run: docker-build
 	docker run -it --rm -p 8080:8080 -m=10m --cpus=".5" --name ${APPLICATION_NAME} ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION}
 
-.PHONY: docker-compose-run
-docker-compose-run: docker-build
-	cd docker-compose && docker compose up
-
 .PHONY: docker-push
 docker-push: 
 	docker buildx build --push --platform linux/arm64,linux/amd64 --tag ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION} .

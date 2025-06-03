@@ -2,7 +2,7 @@ FROM golang:1.21.4-bookworm AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY main.go ./
+COPY main.go, cli/*, server/*, conf/* ./
 RUN go build -o training-application
 
 FROM ubuntu:22.04
