@@ -15,12 +15,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Cli struct {
-	config *AppConfig
+type cli struct {
+	config *appConfig
 }
 
-func NewCli(appConfig *AppConfig) *Cli {
-	return &Cli{
+func newCli(appConfig *appConfig) *cli {
+	return &cli{
 		appConfig,
 	}
 }
@@ -44,14 +44,14 @@ func logHelp() {
 	log.Info("     /readiness:          readiness probe")
 }
 
-func (cli Cli) HandleStdin() {
+func (cli *cli) handleStdin() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		text, err := reader.ReadString('\n')
 		if err != nil {
 			log.Errorf("Error on reading from stdin: '%s'", err)
 		}
-		text = strings.Replace(text, "\n", "", -1)
+		text = strings.ReplaceAll(text, "\n", "")
 		if text != "" {
 			err = cli.executeCommand(text)
 			if err != nil {
@@ -61,16 +61,17 @@ func (cli Cli) HandleStdin() {
 	}
 }
 
-func (cli *Cli) executeCommand(command string) error {
+func (cli *cli) executeCommand(command string) error {
 
 	if command == "help" {
 		logHelp()
 	} else if command == "init" {
 		log.Info("Re-initializing the application configuration")
-		cli.config.InitAppConfig()
-		cli.config.LogAppConfig()
+		cli.config.initAppConfig(true)
+		cli.config.ready = true
+		cli.config.logAppConfig()
 	} else if command == "config" {
-		cli.config.LogAppConfig()
+		cli.config.logAppConfig()
 	} else if command == "set ready" {
 		cli.config.ready = true
 		log.Info("Set the application to ready")
@@ -102,11 +103,11 @@ func (cli *Cli) executeCommand(command string) error {
 	} else if strings.HasPrefix(command, "delay / ") {
 		delayString, _ := strings.CutPrefix(command, "delay / ")
 		var err error
-		cli.config.rootDelay, err = strconv.Atoi(delayString)
+		cli.config.rootDelaySeconds, err = strconv.Atoi(delayString)
 		if err != nil {
 			return fmt.Errorf("error on converting delay string '%s' to int: %s", delayString, err)
 		}
-		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.rootDelay)
+		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.rootDelaySeconds)
 	} else {
 		return fmt.Errorf("unknown command '%s'", command)
 	}
@@ -159,10 +160,10 @@ func leakMem() {
 		if count%1000 == 0 {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-			fmt.Printf("Alloc = %v MiB", m.Alloc/1024/1024)
-			fmt.Printf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
-			fmt.Printf("\tSys = %v MiB", m.Sys/1024/1024)
-			fmt.Printf("\tNumGC = %v\n", m.NumGC)
+			log.Infof("Alloc = %v MiB", m.Alloc/1024/1024)
+			log.Infof("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
+			log.Infof("\tSys = %v MiB", m.Sys/1024/1024)
+			log.Infof("\tNumGC = %v\n", m.NumGC)
 		}
 		time.Sleep(time.Nanosecond)
 		count++
@@ -174,12 +175,12 @@ func leakCpu() error {
 
 	// TODO is this really the smartest way to create a CPU leak?
 
-	f, err := os.Open(os.DevNull)
+	writer, err := os.Open(os.DevNull)
 	if err != nil {
 		log.Errorf("Error on opening /dev/null: %s", err)
 		return err
 	}
-	defer f.Close()
+	defer writer.Close()
 	n := runtime.NumCPU()
 	runtime.GOMAXPROCS(n)
 
@@ -187,10 +188,13 @@ func leakCpu() error {
 		go func() {
 			for {
 				var usage syscall.Rusage
-				syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
-				fmt.Printf("User CPU Time: %v\n", usage.Utime)
-				fmt.Printf("System CPU Time: %v\n", usage.Stime)
-				fmt.Fprintf(f, ".")
+				err = syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
+				if err != nil {
+					log.Errorf("Error on cpu usage: %s", err)
+				}
+				log.Infof("User CPU Time: %v\n", usage.Utime)
+				log.Infof("System CPU Time: %v\n", usage.Stime)
+				fmt.Fprintf(writer, ".")
 			}
 		}()
 	}

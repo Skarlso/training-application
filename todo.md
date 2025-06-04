@@ -6,6 +6,16 @@
 - github action => is it save to put quay credentials in public repo
 - write unit tests to ensure training usecases work (KFD, KSM)
 
+## lint
+
+### go code
+
+- fix remaining linter issues and add dep from build step in makefile
+
+### docker build
+
+- fix remaining linter issues and add dep from build step in makefile
+
 ## bugs
 
 ### leak cpu
@@ -27,13 +37,3 @@ do I need the caller? eg if the request is coming from k8s or istio?
 - app.conf
 - env vars
 - bin params
-
-### naming of the thing
-
-- app vs application vs training-application
-- conf/app.conf... really? => naming... folder...
-
-### TEST
-
-- config file
-- env vars

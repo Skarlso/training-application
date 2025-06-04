@@ -9,13 +9,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Server struct {
-	config *AppConfig
+type server struct {
+	config *appConfig
 }
 
-func NewServer(appConfig *AppConfig) *Server {
+func newServer(appConfig *appConfig) *server {
 
-	server := &Server{
+	server := &server{
 		config: appConfig,
 	}
 
@@ -29,43 +29,46 @@ func NewServer(appConfig *AppConfig) *Server {
 	return server
 }
 
-func (s *Server) Run() {
+func (s *server) run() {
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Errorf("Error on starting the server: '%s'", err)
 	}
 }
 
-func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request to root endpoint ('/')")
-	if s.config.rootDelay > 0 {
-		log.Infof("Delaying for %d seconds", s.config.rootDelay)
-		for i := 0; i < s.config.rootDelay; i++ {
-			log.Infof("Delayed Response for %d seconds", i+1)
+	if s.config.rootDelaySeconds > 0 {
+		for i := 0; i < s.config.rootDelaySeconds; i++ {
+			log.Infof("Delayed Response for %d of %d seconds", i+1, s.config.rootDelaySeconds)
 			time.Sleep(1 * time.Second)
 		}
 		log.Info("Finished delaying Response")
 	}
-	fmt.Fprintf(w, "<!DOCTYPE html><htlml>")
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "<!DOCTYPE html><htlml>")
+	fmt.Fprintf(w, "<head><title>%s %s</title></head>", s.config.applicationName, s.config.applicationVersion)
 	fmt.Fprintf(w, "<body style='background-color:%s;'>", s.config.color)
-	if s.config.rootDelay > 0 {
-		fmt.Fprintf(w, "(Response was delayed for %d seconds)", s.config.rootDelay)
+	if s.config.rootDelaySeconds > 0 {
+		fmt.Fprintf(w, "(Response was delayed for %d seconds)", s.config.rootDelaySeconds)
 	}
-	fmt.Fprintf(w, "Name: %s<br>", s.config.name)
-	fmt.Fprintf(w, "Version: %s<br>", s.config.version)
-	fmt.Fprintf(w, "Message: %s<br>", s.config.message)
-	fmt.Fprintf(w, "Log only to file: %v<br>", s.config.logToFileOnly)
+	fmt.Fprintf(w, "Application Name: %s<br>", s.config.applicationName)
+	fmt.Fprintf(w, "Application Version: %s<br>", s.config.applicationVersion)
+	fmt.Fprintf(w, "Application Message: %s<br>", s.config.applicationMessage)
 	fmt.Fprintf(w, "Application Liveness: %t<br>", s.config.alive)
 	fmt.Fprintf(w, "Application Readiness: %t<br>", s.config.ready)
-	fmt.Fprintf(w, "Delay of root endpoint ('/'): %d<br>", s.config.rootDelay)
+	fmt.Fprintf(w, "Delay seconds of root endpoint ('/'): %d<br>", s.config.rootDelaySeconds)
+	fmt.Fprintf(w, "Seconds needed for startup: %d<br>", s.config.startUpDelaySeconds)
+	fmt.Fprintf(w, "Seconds needed for teardown: %d<br>", s.config.tearDownDelaySeconds)
+	fmt.Fprintf(w, "Only log to file: %v<br>", s.config.logToFileOnly)
 	fmt.Fprintf(w, "Process ID of the application: %d<br>", os.Getpid())
 	if s.config.catImageUrl != "" {
 		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", s.config.catImageUrl)
 	}
-	fmt.Fprintf(w, "</body></htlml>")
+	fmt.Fprint(w, "</body></htlml>")
 }
 
-func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleLiveness(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request to liveness endpoint ('/liveness')")
 	if s.config.alive {
 		w.WriteHeader(http.StatusOK)
@@ -76,7 +79,7 @@ func (s *Server) handleLiveness(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handleReadiness(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleReadiness(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request to readiness endpoint ('/readiness')")
 	if s.config.ready {
 		w.WriteHeader(http.StatusOK)

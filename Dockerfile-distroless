@@ -1,11 +1,11 @@
 FROM golang:1.24.3-alpine AS builder
 WORKDIR /src
-COPY go.mod go.sum ./
+COPY src/go.mod src/go.sum ./
 RUN go mod download
-COPY *.go ./
+COPY src/*.go ./
 RUN CGO_ENABLED=0 go build -o training-application
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /src/training-application /
-COPY conf/app.conf /conf/
+COPY training-application.conf /
 ENTRYPOINT [ "/training-application" ]
