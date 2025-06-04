@@ -10,7 +10,7 @@ The aim of this application is to be used in the context of trainings for Docker
 
 ## Available Endpoints
 
-> The application offers the following endpoints on **port 8080**
+> **_NOTE:_** The application offers the following endpoints on port **8080**
 
 ### `/`
 
@@ -32,9 +32,7 @@ If everything is fine the application will respond with a 200 status code, if no
 
 ## Available Commands
 
-> The application offers the following commands **via stdin**
-
-TODO tty in docker and k8s
+> **_NOTE:_** The application offers the following commands **via stdin**
 
 | Command             | Description                                                         |
 | ------------------- | ------------------------------------------------------------------- |
@@ -50,115 +48,133 @@ TODO tty in docker and k8s
 | `request <url>`     | Request a URL, e.g., `request https://www.kubermatic.com/`          |
 | `delay / <seconds>` | Set delay for the root endpoint (`/`) in seconds, e.g., `delay / 5` |
 
+> **_INSIDE A CONTAINER_** If you want to send commands to the application you have to use of `docker attach my-training-application-container`. The container als has to have `tty` enabled.
+
+> **_INSIDE A POD_** If you want to send commands to the application you have have to use of `kubectl attach -it training-application-pod` and have the following flags set in the pod manifest:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: training-application
+spec:
+  containers:
+    - name: training-application
+      image: quay.io/kubermatic-labs/training-application:3.0.0
+      imagePullPolicy: Always
+      tty: true # <= add those flags
+      stdin: true # <= add those flags
+      ports:
+        - name: http
+          containerPort: 8080
+```
+
 ## Configuring the application
 
 ### `configFilePath`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-  | Path to the config file | string | "./training-application.conf" | | application arg, you can set this via eg `./training-application --configFilePath my.conf` |
+- **Description**: Path to the config file
+- **Type**: string
+- **Default Value**: "./training-application.conf"
+- **Usage**: application arg, you can set this via eg `./training-application --configFilePath my.conf`
 
 ### `alive`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| Flag to indicate the applications liveness | bool | true | | configurable via the commands `set alive` and `set dead` |
+- **Description**: Flag to indicate the applications liveness
+- **Type**: bool
+- **Default Value**: true
+- **Usage**: configurable via the commands `set alive` and `set dead`
 
 ### `ready`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| Flag to indicate the applications readiness | bool | false | | true after `startUpDelaySeconds` , false on graceful shutdown; configurable via the commands `set ready` and `set unready` |
+- **Description**: Flag to indicate the applications readiness
+- **Type**: bool
+- **Default Value**: false
+- **Usage**: true after `startUpDelaySeconds` , false on graceful shutdown; configurable via the commands `set ready` and `set unready`
 
 ### `name`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| The name of the application | string | "not set" | | via config file or via the environment variable `APP_NAME` |
+- **Description**: The name of the application
+- **Type**: string
+- **Default Value**: "not set"
+- **Usage**: via config file or via the environment variable `APP_NAME`
 
 ### `version`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| The version of the application | string | "not set" | | via config file or via the environment variable `APP_VERSION` |
+- **Description**: The version of the application
+- **Type**: string
+- **Default Value**: "not set"
+- **Usage**: via config file or via the environment variable `APP_VERSION`
 
 ### `message`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| A message to be shown on the root endpoint | string | "not set" | | via config file or via the environment variable `APP_MESSAGE` |
+- **Description**: A message to be shown on the root endpoint
+- **Type**: string
+- **Default Value**: "not set
+- **Usage**: via config file or via the environment variable `APP_MESSAGE`
 
 ### `color`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| The background color of the root endpoint | string | "not set" | | via config file or via the environment variable `APP_COLOR` |
+- **Description**: The background color of the root endpoint
+- **Type**: string
+- **Default Value**: "not set"
+- **Usage**: via config file or via the environment variable `APP_COLOR`
 
 ### `rootDelaySeconds`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| For delaying requests to the root endpoint | int | 0 | | via config file or via the environment variable `APP_ROOT_DELAY_SECONDS` |
+- **Description**: For delaying requests to the root endpoint
+- **Type**: int
+- **Default Value**: 0
+- **Usage**: via config file or via the command `delay / <seconds>`, eg "delay / 10"
 
 ### `startUpDelaySeconds`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-|Time the application will take to start | int | 0 | | via config file or via the environment variable `APP_START_UP_DELAY_SECONDS` |
+- **Description**: Time the application will take to start
+- **Type**: int
+- **Default Value**: 0
+- **Usage**: via config file
 
 ### `tearDownDelaySeconds`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| Time the application will take to gracefully shut down | int | 0 | | via config file or via the environment variable `APP_TEAR_DOWN_DELAY_SECONDS` |
+- **Description**: Time the application will take to gracefully shut down
+- **Type**: int
+- **Default Value**: 0
+- **Usage**: via config file
 
 ### `logToFileOnly`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| Log **only** to the file `training-application.log`, if set to true no logging to stdout will happen | bool | false | | via config file |
+- **Description**: Log **only** to the file named `training-application.log`, if set to true no logging to stdout will happen
+- **Type**: bool
+- **Default Value**: false
+- **Usage**: via config file
 
 ### `catMode`
 
-- **Description**:
-- **Type**:
-- **Default Value**:
-- **Usage**:
-
-| Flag to get cute cat images in the rood endpoint | bool | false | | via config file |
-
-## Running the application
+- **Description**: Flag to get cute cat images in the root endpoint
+- **Type**: bool
+- **Default Value**: false
+- **Usage**: via config file
 
 ## Building the application
+
+```bash
+make build
+```
+
+## Running the application natively
+
+```bash
+make run
+```
+
+## Building the Image
+
+```bash
+make docker-build
+```
+
+## Running the Image
+
+```bash
+make docker-run
+```

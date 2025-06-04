@@ -50,7 +50,8 @@ func main() {
 
 	server := newServer(config)
 
-	log.Infof("Application started with PID %d, listenting on port 8080", os.Getpid())
+	hostName, _ := os.Hostname()
+	log.Infof("Application started with PID %d, UID %d on host with name %s; listenting on port 8080", os.Getpid(), os.Getuid(), hostName)
 	config.ready = true
 	log.Info("Application set to ready")
 	log.Info("For getting help, type 'help'")

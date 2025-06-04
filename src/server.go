@@ -49,10 +49,8 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "<!DOCTYPE html><htlml>")
 	fmt.Fprintf(w, "<head><title>%s %s</title></head>", s.config.applicationName, s.config.applicationVersion)
 	fmt.Fprintf(w, "<body style='background-color:%s;'>", s.config.color)
-	if s.config.rootDelaySeconds > 0 {
-		fmt.Fprintf(w, "(Response was delayed for %d seconds)", s.config.rootDelaySeconds)
-	}
-	fmt.Fprintf(w, "Application Name: %s<br>", s.config.applicationName)
+	fmt.Fprintf(w, "<h1>%s</h1>", s.config.applicationName)
+	fmt.Fprint(w, "<h2>Configuration</h2>")
 	fmt.Fprintf(w, "Application Version: %s<br>", s.config.applicationVersion)
 	fmt.Fprintf(w, "Application Message: %s<br>", s.config.applicationMessage)
 	fmt.Fprintf(w, "Application Liveness: %t<br>", s.config.alive)
@@ -61,10 +59,17 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Seconds needed for startup: %d<br>", s.config.startUpDelaySeconds)
 	fmt.Fprintf(w, "Seconds needed for teardown: %d<br>", s.config.tearDownDelaySeconds)
 	fmt.Fprintf(w, "Only log to file: %v<br>", s.config.logToFileOnly)
-	fmt.Fprintf(w, "Process ID of the application: %d<br>", os.Getpid())
+
+	fmt.Fprint(w, "<h2>Tech Details</h2>")
+	fmt.Fprintf(w, "Process Id of the application: %d<br>", os.Getpid())
+	fmt.Fprintf(w, "User Id of the application: %d<br>", os.Getuid())
+	hostName, _ := os.Hostname()
+	fmt.Fprintf(w, "Hostname: %s<br>", hostName)
+
 	if s.config.catImageUrl != "" {
 		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", s.config.catImageUrl)
 	}
+
 	fmt.Fprint(w, "</body></htlml>")
 }
 

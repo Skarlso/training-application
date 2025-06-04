@@ -23,11 +23,6 @@ type appConfig struct {
 	applicationVersion   string
 	applicationMessage   string
 	color                string
-	nodeName             string
-	containerName        string
-	podNamespace         string
-	podName              string
-	podIP                string
 	logToFileOnly        bool
 	catImageUrl          string
 }
@@ -45,11 +40,6 @@ func (appConfig *appConfig) logAppConfig() {
 	log.Infof("     Application message:       %s", appConfig.applicationMessage)
 	log.Infof("     color:                     %s", appConfig.color)
 	log.Infof("     logToFileOnly:             %v", appConfig.logToFileOnly)
-	log.Infof("     nodeName:                  %s", appConfig.nodeName)
-	log.Infof("     containerName:             %s", appConfig.containerName)
-	log.Infof("     podNamespace:              %s", appConfig.podNamespace)
-	log.Infof("     podName:                   %s", appConfig.podName)
-	log.Infof("     podIP:                     %s", appConfig.podIP)
 	log.Infof("     catImageUrl:               %s", appConfig.catImageUrl)
 }
 
@@ -82,14 +72,9 @@ func (appConfig *appConfig) initAppConfig(isReady bool) {
 	appConfig.applicationMessage = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
 	appConfig.color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
 	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "", false)
-	appConfig.rootDelaySeconds = getAppConfigIntValue(fileConfig, "rootDelaySeconds", "APP_ROOT_DELAY_SECONDS", 0)
-	appConfig.startUpDelaySeconds = getAppConfigIntValue(fileConfig, "startUpDelaySeconds", "APP_START_UP_DELAY_SECONDS", 0)
-	appConfig.tearDownDelaySeconds = getAppConfigIntValue(fileConfig, "tearDownDelaySeconds", "APP_TEAR_DOWN_DELAY_SECONDS", 0)
-	appConfig.nodeName = getAppConfigStringValue(nil, "", "NODE_NAME", "")
-	appConfig.containerName = getAppConfigStringValue(nil, "", "CONTAINER_NAME", "")
-	appConfig.podNamespace = getAppConfigStringValue(nil, "", "POD_NAMESPACE", "")
-	appConfig.podName = getAppConfigStringValue(nil, "", "POD_NAME", "")
-	appConfig.podIP = getAppConfigStringValue(nil, "", "POD_IP", "")
+	appConfig.rootDelaySeconds = getAppConfigIntValue(fileConfig, "rootDelaySeconds", "", 0)
+	appConfig.startUpDelaySeconds = getAppConfigIntValue(fileConfig, "startUpDelaySeconds", "", 0)
+	appConfig.tearDownDelaySeconds = getAppConfigIntValue(fileConfig, "tearDownDelaySeconds", "", 0)
 	catMode := getAppConfigBoolValue(fileConfig, "catMode", "", false)
 	if catMode {
 		appConfig.catImageUrl, err = getCat()
