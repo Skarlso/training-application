@@ -60,7 +60,7 @@ func main() {
 
 func getConfigFilePath() string {
 	args := os.Args[1:]
-	if len(args) == 2 && args[0] == "configFilePath" {
+	if len(args) == 2 && args[0] == "--configFilePath" {
 		return args[1]
 	}
 	log.Info("Config File Path not set, defaulting to './training-application.conf'")

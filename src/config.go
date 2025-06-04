@@ -81,16 +81,16 @@ func (appConfig *appConfig) initAppConfig(isReady bool) {
 	appConfig.applicationVersion = getAppConfigStringValue(fileConfig, "version", "APP_VERSION", "not set")
 	appConfig.applicationMessage = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
 	appConfig.color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
-	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "APP_LOG_TO_FILE_ONLY", false)
+	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "", false)
 	appConfig.rootDelaySeconds = getAppConfigIntValue(fileConfig, "rootDelaySeconds", "APP_ROOT_DELAY_SECONDS", 0)
 	appConfig.startUpDelaySeconds = getAppConfigIntValue(fileConfig, "startUpDelaySeconds", "APP_START_UP_DELAY_SECONDS", 0)
 	appConfig.tearDownDelaySeconds = getAppConfigIntValue(fileConfig, "tearDownDelaySeconds", "APP_TEAR_DOWN_DELAY_SECONDS", 0)
-	appConfig.nodeName = getAppConfigStringValue(fileConfig, "nodeName", "NODE_NAME", "")
-	appConfig.containerName = getAppConfigStringValue(fileConfig, "containerName", "CONTAINER_NAME", "")
-	appConfig.podNamespace = getAppConfigStringValue(fileConfig, "podNamespace", "POD_NAMESPACE", "")
-	appConfig.podName = getAppConfigStringValue(fileConfig, "podName", "POD_NAME", "")
-	appConfig.podIP = getAppConfigStringValue(fileConfig, "podIP", "POD_IP", "")
-	catMode := getAppConfigBoolValue(fileConfig, "catMode", "APP_CAT_MODE", false)
+	appConfig.nodeName = getAppConfigStringValue(nil, "", "NODE_NAME", "")
+	appConfig.containerName = getAppConfigStringValue(nil, "", "CONTAINER_NAME", "")
+	appConfig.podNamespace = getAppConfigStringValue(nil, "", "POD_NAMESPACE", "")
+	appConfig.podName = getAppConfigStringValue(nil, "", "POD_NAME", "")
+	appConfig.podIP = getAppConfigStringValue(nil, "", "POD_IP", "")
+	catMode := getAppConfigBoolValue(fileConfig, "catMode", "", false)
 	if catMode {
 		appConfig.catImageUrl, err = getCat()
 		if err != nil {
@@ -100,9 +100,11 @@ func (appConfig *appConfig) initAppConfig(isReady bool) {
 }
 
 func getAppConfigStringValue(fileConfig *properties.Properties, fileConfigProperty, envVarName, defaultValue string) string {
-	envVarValue, envVarExists := os.LookupEnv(envVarName)
-	if envVarExists {
-		return envVarValue
+	if envVarName != "" {
+		envVarValue, envVarExists := os.LookupEnv(envVarName)
+		if envVarExists {
+			return envVarValue
+		}
 	}
 	if fileConfig == nil {
 		return defaultValue
@@ -111,14 +113,16 @@ func getAppConfigStringValue(fileConfig *properties.Properties, fileConfigProper
 }
 
 func getAppConfigBoolValue(fileConfig *properties.Properties, fileConfigProperty, envVarName string, defaultValue bool) bool {
-	envVarValue, envVarExists := os.LookupEnv(envVarName)
-	if envVarExists {
-		value, err := strconv.ParseBool(envVarValue)
-		if err != nil {
-			log.Errorf("could not convert envirnment variable named '%s' with value '%s' to bool:", envVarName, envVarValue)
-			return defaultValue
+	if envVarName != "" {
+		envVarValue, envVarExists := os.LookupEnv(envVarName)
+		if envVarExists {
+			value, err := strconv.ParseBool(envVarValue)
+			if err != nil {
+				log.Errorf("could not convert envirnment variable named '%s' with value '%s' to bool:", envVarName, envVarValue)
+				return defaultValue
+			}
+			return value
 		}
-		return value
 	}
 	if fileConfig == nil {
 		return defaultValue
@@ -133,14 +137,16 @@ func getAppConfigBoolValue(fileConfig *properties.Properties, fileConfigProperty
 }
 
 func getAppConfigIntValue(fileConfig *properties.Properties, fileConfigProperty, envVarName string, defaultValue int) int {
-	envVarValue, envVarExists := os.LookupEnv(envVarName)
-	if envVarExists {
-		value, err := strconv.Atoi(envVarValue)
-		if err != nil {
-			log.Errorf("could not convert envirnment variable named '%s' with value '%s' to int:", envVarName, envVarValue)
-			return defaultValue
+	if envVarName != "" {
+		envVarValue, envVarExists := os.LookupEnv(envVarName)
+		if envVarExists {
+			value, err := strconv.Atoi(envVarValue)
+			if err != nil {
+				log.Errorf("could not convert envirnment variable named '%s' with value '%s' to int:", envVarName, envVarValue)
+				return defaultValue
+			}
+			return value
 		}
-		return value
 	}
 	if fileConfig == nil {
 		return defaultValue
