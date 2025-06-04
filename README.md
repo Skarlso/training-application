@@ -8,6 +8,8 @@ The aim of this application is to be used in the context of trainings for Docker
 
 **Nothing**, besides possibly (depending on the application configuration) showing a cute cat image 🙀.
 
+<img width="500" alt="Screenshot 2025-06-04 at 15 35 18" src="https://github.com/user-attachments/assets/91c33c1d-90f4-4f2e-986c-d0b3b77f4bde" />
+
 ## Available Endpoints
 
 > **_NOTE:_** The application offers the following endpoints on port **8080**
