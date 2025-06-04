@@ -26,6 +26,7 @@ do I need the caller? eg if the request is coming from k8s or istio?
 
 - app.conf
 - env vars
+- bin params
 
 ### naming of the thing
 

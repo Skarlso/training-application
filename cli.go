@@ -72,16 +72,16 @@ func (cli *Cli) executeCommand(command string) error {
 	} else if command == "config" {
 		cli.config.LogAppConfig()
 	} else if command == "set ready" {
-		cli.config.Ready = true
+		cli.config.ready = true
 		log.Info("Set the application to ready")
 	} else if command == "set unready" {
-		cli.config.Ready = false
+		cli.config.ready = false
 		log.Info("Set the application to unready")
 	} else if command == "set alive" {
-		cli.config.Alive = true
+		cli.config.alive = true
 		log.Info("Set the application to alive")
 	} else if command == "set dead" {
-		cli.config.Alive = false
+		cli.config.alive = false
 		log.Info("Set the application to dead")
 	} else if command == "leak mem" {
 		log.Info("Leaking Memory")
@@ -102,11 +102,11 @@ func (cli *Cli) executeCommand(command string) error {
 	} else if strings.HasPrefix(command, "delay / ") {
 		delayString, _ := strings.CutPrefix(command, "delay / ")
 		var err error
-		cli.config.RootDelay, err = strconv.Atoi(delayString)
+		cli.config.rootDelay, err = strconv.Atoi(delayString)
 		if err != nil {
 			return fmt.Errorf("error on converting delay string '%s' to int: %s", delayString, err)
 		}
-		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.RootDelay)
+		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.rootDelay)
 	} else {
 		return fmt.Errorf("unknown command '%s'", command)
 	}

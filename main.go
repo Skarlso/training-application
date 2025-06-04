@@ -27,7 +27,7 @@ func main() {
 	config.InitAppConfig()
 	config.LogAppConfig()
 
-	if config.LogToFileOnly {
+	if config.logToFileOnly {
 		log.Warn("Switching to log file only mode, subsequent logs will happen in the file 'application.log'")
 		file, err := os.OpenFile("application.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
@@ -42,6 +42,8 @@ func main() {
 		time.Sleep(1 * time.Second)
 		log.Infof("Starting the application took %d seconds", i+1)
 	}
+	config.alive = true
+	log.Info("Application set to ready")
 
 	cli := NewCli(config)
 
@@ -50,7 +52,7 @@ func main() {
 
 	server := NewServer(config)
 
-	log.Info("Application started, listenting on port 8080")
+	log.Infof("Application started with PID %d, listenting on port 8080", os.Getpid())
 	log.Info("For getting help, type 'help'")
 
 	server.Run()
@@ -79,6 +81,7 @@ func handleSigterm(signalChanel chan os.Signal, exitChanel chan int) {
 		signal := <-signalChanel
 		if signal == syscall.SIGTERM {
 			log.Info("Got SIGTERM signal")
+			log.Info("Application set to not ready")
 			log.Info("Starting Graceful Shutdown, this will take 10 seconds")
 			for i := 0; i < 10; i++ {
 				time.Sleep(1 * time.Second)

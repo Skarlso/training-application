@@ -12,49 +12,49 @@ import (
 )
 
 type AppConfig struct {
-	ConfigFilePath string
-	Alive          bool
-	Ready          bool
-	RootDelay      int
-	Name           string
-	Version        string
-	Message        string
-	Color          string
-	NodeName       string
-	ContainerName  string
-	PodNamespace   string
-	PodName        string
-	PodIP          string
-	LogToFileOnly  bool
-	CatImageUrl    string
+	configFilePath string
+	alive          bool
+	ready          bool
+	rootDelay      int
+	name           string
+	version        string
+	message        string
+	color          string
+	nodeName       string
+	containerName  string
+	podNamespace   string
+	podName        string
+	podIP          string
+	logToFileOnly  bool
+	catImageUrl    string
 }
 
 func (appConfig *AppConfig) LogAppConfig() {
 	log.Info("Application Configuration:")
-	log.Infof("     configFilePath:  %v", appConfig.ConfigFilePath)
-	log.Infof("     ready:           %v", appConfig.Ready)
-	log.Infof("     alive:           %v", appConfig.Alive)
-	log.Infof("     / delay:         %d", appConfig.RootDelay)
-	log.Infof("     name:            %s", appConfig.Name)
-	log.Infof("     version:         %s", appConfig.Version)
-	log.Infof("     message:         %s", appConfig.Message)
-	log.Infof("     color:           %s", appConfig.Color)
-	log.Infof("     logToFileOnly:   %v", appConfig.LogToFileOnly)
-	log.Infof("     nodeName:        %s", appConfig.NodeName)
-	log.Infof("     containerName:   %s", appConfig.ContainerName)
-	log.Infof("     podNamespace:    %s", appConfig.PodNamespace)
-	log.Infof("     podName:         %s", appConfig.PodName)
-	log.Infof("     podIP:           %s", appConfig.PodIP)
-	log.Infof("     catImageUrl:     %s", appConfig.CatImageUrl)
+	log.Infof("     configFilePath:  %v", appConfig.configFilePath)
+	log.Infof("     ready:           %v", appConfig.ready)
+	log.Infof("     alive:           %v", appConfig.alive)
+	log.Infof("     / delay:         %d", appConfig.rootDelay)
+	log.Infof("     name:            %s", appConfig.name)
+	log.Infof("     version:         %s", appConfig.version)
+	log.Infof("     message:         %s", appConfig.message)
+	log.Infof("     color:           %s", appConfig.color)
+	log.Infof("     logToFileOnly:   %v", appConfig.logToFileOnly)
+	log.Infof("     nodeName:        %s", appConfig.nodeName)
+	log.Infof("     containerName:   %s", appConfig.containerName)
+	log.Infof("     podNamespace:    %s", appConfig.podNamespace)
+	log.Infof("     podName:         %s", appConfig.podName)
+	log.Infof("     podIP:           %s", appConfig.podIP)
+	log.Infof("     catImageUrl:     %s", appConfig.catImageUrl)
 }
 
 func NewAppConfig(configFilePath string) *AppConfig {
 
 	ret := &AppConfig{
-		ConfigFilePath: configFilePath,
-		Alive:          true,
-		Ready:          true,
-		RootDelay:      0,
+		configFilePath: configFilePath,
+		alive:          true,
+		ready:          false,
+		rootDelay:      0,
 	}
 
 	return ret
@@ -62,28 +62,28 @@ func NewAppConfig(configFilePath string) *AppConfig {
 
 func (appConfig *AppConfig) InitAppConfig() {
 
-	appConfig.Alive = true
-	appConfig.Ready = true
-	appConfig.RootDelay = 0
+	appConfig.alive = true
+	appConfig.ready = true
+	appConfig.rootDelay = 0
 
-	fileConfig, err := properties.LoadFile(appConfig.ConfigFilePath, properties.UTF8)
+	fileConfig, err := properties.LoadFile(appConfig.configFilePath, properties.UTF8)
 	if err != nil {
-		log.Errorf("Configuration file %s not found: 	%v", appConfig.ConfigFilePath, err)
+		log.Errorf("Configuration file %s not found: 	%v", appConfig.configFilePath, err)
 	}
 
-	appConfig.Name = getAppConfigStringValue(fileConfig, "name", "APP_NAME", "not set")
-	appConfig.Version = getAppConfigStringValue(fileConfig, "version", "APP_VERSION", "not set")
-	appConfig.Message = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
-	appConfig.Color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
-	appConfig.LogToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "APP_LOG_TO_FILE_ONLY", false)
-	appConfig.NodeName = getAppConfigStringValue(fileConfig, "nodeName", "NODE_NAME", "")
-	appConfig.ContainerName = getAppConfigStringValue(fileConfig, "containerName", "CONTAINER_NAME", "")
-	appConfig.PodNamespace = getAppConfigStringValue(fileConfig, "podNamespace", "POD_NAMESPACE", "")
-	appConfig.PodName = getAppConfigStringValue(fileConfig, "podName", "POD_NAME", "")
-	appConfig.PodIP = getAppConfigStringValue(fileConfig, "podIP", "POD_IP", "")
+	appConfig.name = getAppConfigStringValue(fileConfig, "name", "APP_NAME", "not set")
+	appConfig.version = getAppConfigStringValue(fileConfig, "version", "APP_VERSION", "not set")
+	appConfig.message = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
+	appConfig.color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
+	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "APP_LOG_TO_FILE_ONLY", false)
+	appConfig.nodeName = getAppConfigStringValue(fileConfig, "nodeName", "NODE_NAME", "")
+	appConfig.containerName = getAppConfigStringValue(fileConfig, "containerName", "CONTAINER_NAME", "")
+	appConfig.podNamespace = getAppConfigStringValue(fileConfig, "podNamespace", "POD_NAMESPACE", "")
+	appConfig.podName = getAppConfigStringValue(fileConfig, "podName", "POD_NAME", "")
+	appConfig.podIP = getAppConfigStringValue(fileConfig, "podIP", "POD_IP", "")
 	catMode := getAppConfigBoolValue(fileConfig, "catMode", "APP_CAT_MODE", false)
 	if catMode {
-		appConfig.CatImageUrl, err = getCat()
+		appConfig.catImageUrl, err = getCat()
 		if err != nil {
 			log.Error("could not obtain cat image", err)
 		}
@@ -126,7 +126,7 @@ func getAppConfigBoolValue(fileConfig *properties.Properties, fileConfigProperty
 func getCat() (string, error) {
 
 	type catStruct struct {
-		Url string `json:"url"`
+		url string `json:"url"`
 	}
 
 	resp, err := http.Get("https://api.thecatapi.com/v1/images/search")
@@ -149,5 +149,5 @@ func getCat() (string, error) {
 		return "", err
 	}
 
-	return cats[0].Url, nil
+	return cats[0].url, nil
 }
