@@ -91,8 +91,6 @@ func handleSigterm(signalChanel chan os.Signal, exitChanel chan int) {
 			}
 			log.Info("Graceful Shutdown has finished")
 			exitChanel <- 0
-		} else if signal == syscall.SIGKILL {
-			log.Info("Got SIGKILL signal")
 		} else {
 			log.Errorf("Got unknown signal '%s'", signal)
 			exitChanel <- 1

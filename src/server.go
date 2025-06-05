@@ -56,17 +56,18 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Application Liveness: %t<br>", s.config.alive)
 	fmt.Fprintf(w, "Application Readiness: %t<br>", s.config.ready)
 	fmt.Fprintf(w, "Delay seconds of root endpoint ('/'): %d<br>", s.config.rootDelaySeconds)
-	fmt.Fprintf(w, "Seconds needed for startup: %d<br>", s.config.startUpDelaySeconds)
-	fmt.Fprintf(w, "Seconds needed for teardown: %d<br>", s.config.tearDownDelaySeconds)
+	fmt.Fprintf(w, "Seconds the application needs to start up: %d<br>", s.config.startUpDelaySeconds)
+	fmt.Fprintf(w, "Seconds the application needs to shut down gracefuly: %d<br>", s.config.tearDownDelaySeconds)
 	fmt.Fprintf(w, "Only log to file: %v<br>", s.config.logToFileOnly)
 
 	fmt.Fprint(w, "<h2>Tech Details</h2>")
 	fmt.Fprintf(w, "Process Id of the application: %d<br>", os.Getpid())
-	fmt.Fprintf(w, "User Id of the application: %d<br>", os.Getuid())
+	fmt.Fprintf(w, "User Id the application is using: %d<br>", os.Getuid())
 	hostName, _ := os.Hostname()
 	fmt.Fprintf(w, "Hostname: %s<br>", hostName)
 
 	if s.config.catImageUrl != "" {
+		fmt.Fprint(w, "<h2>The promised cute cat</h2>")
 		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", s.config.catImageUrl)
 	}
 
