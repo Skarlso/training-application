@@ -38,6 +38,10 @@ func (s *server) run() {
 
 func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request to root endpoint ('/')")
+	if !s.config.rootEnabled {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		log.Info("Root endpoint ('/') responded with Status Code 503 Service Unavailable due to root endpoint is disabled")
+	} else {
 	if s.config.rootDelaySeconds > 0 {
 		for i := 0; i < s.config.rootDelaySeconds; i++ {
 			log.Infof("Delayed Response for %d of %d seconds", i+1, s.config.rootDelaySeconds)
@@ -67,11 +71,12 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hostname: %s<br>", hostName)
 
 	if s.config.catImageUrl != "" {
-		fmt.Fprint(w, "<h2>The promised cute cat</h2>")
+		fmt.Fprint(w, "<h2>The cute cat</h2>")
 		fmt.Fprintf(w, "<img src='%s' width='500px'></img>", s.config.catImageUrl)
 	}
 
 	fmt.Fprint(w, "</body></htlml>")
+}
 }
 
 func (s *server) handleLiveness(w http.ResponseWriter, r *http.Request) {

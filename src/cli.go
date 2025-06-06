@@ -108,6 +108,12 @@ func (cli *cli) executeCommand(command string) error {
 			return fmt.Errorf("error on converting delay string '%s' to int: %s", delayString, err)
 		}
 		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.rootDelaySeconds)
+	} else if strings.HasPrefix(command, "disable /") {
+		cli.config.rootEnabled = false
+		log.Info("Disabled the root endpoint ('/')")	
+	} else if strings.HasPrefix(command, "enable /") {
+		cli.config.rootEnabled = true
+		log.Info("Enabled the root endpoint ('/')")	
 	} else {
 		return fmt.Errorf("unknown command '%s'", command)
 	}

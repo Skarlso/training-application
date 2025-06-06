@@ -16,6 +16,7 @@ type appConfig struct {
 	configFilePath       string
 	alive                bool
 	ready                bool
+	rootEnabled					 bool
 	rootDelaySeconds     int
 	startUpDelaySeconds  int
 	tearDownDelaySeconds int
@@ -32,6 +33,7 @@ func (appConfig *appConfig) logAppConfig() {
 	log.Infof("     configFilePath:            %v", appConfig.configFilePath)
 	log.Infof("     ready:                     %v", appConfig.ready)
 	log.Infof("     alive:                     %v", appConfig.alive)
+	log.Infof("     / enabled:                 %v", appConfig.rootEnabled)
 	log.Infof("     / delay seconds:           %d", appConfig.rootDelaySeconds)
 	log.Infof("     startup delay seconds:     %d", appConfig.startUpDelaySeconds)
 	log.Infof("     teardown delay seconds:    %d", appConfig.tearDownDelaySeconds)
@@ -49,6 +51,7 @@ func newAppConfig(configFilePath string) *appConfig {
 		configFilePath:       configFilePath,
 		alive:                true,
 		ready:                false,
+		rootEnabled: true,
 		rootDelaySeconds:     0,
 		startUpDelaySeconds:  0,
 		tearDownDelaySeconds: 0,
@@ -72,7 +75,6 @@ func (appConfig *appConfig) initAppConfig(isReady bool) {
 	appConfig.applicationMessage = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
 	appConfig.color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
 	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "", false)
-	appConfig.rootDelaySeconds = getAppConfigIntValue(fileConfig, "rootDelaySeconds", "", 0)
 	appConfig.startUpDelaySeconds = getAppConfigIntValue(fileConfig, "startUpDelaySeconds", "", 0)
 	appConfig.tearDownDelaySeconds = getAppConfigIntValue(fileConfig, "tearDownDelaySeconds", "", 0)
 	catMode := getAppConfigBoolValue(fileConfig, "catMode", "", false)
@@ -94,7 +96,7 @@ func getAppConfigStringValue(fileConfig *properties.Properties, fileConfigProper
 	if fileConfig == nil {
 		return defaultValue
 	}
-	return fileConfig.GetString(fileConfigProperty, "")
+	return fileConfig.GetString(fileConfigProperty, defaultValue)
 }
 
 func getAppConfigBoolValue(fileConfig *properties.Properties, fileConfigProperty, envVarName string, defaultValue bool) bool {
@@ -113,11 +115,14 @@ func getAppConfigBoolValue(fileConfig *properties.Properties, fileConfigProperty
 		return defaultValue
 	}
 	fileConfigPropertyValue := fileConfig.GetString(fileConfigProperty, "")
+	if fileConfigPropertyValue == "" {
+		return defaultValue
+	}
 	value, err := strconv.ParseBool(fileConfigPropertyValue)
 	if err != nil {
 		log.Errorf("could not convert file configuration property named '%s' with value '%s' to bool:", fileConfigProperty, fileConfigPropertyValue)
 		return defaultValue
-	}
+	} 
 	return value
 }
 
@@ -137,6 +142,9 @@ func getAppConfigIntValue(fileConfig *properties.Properties, fileConfigProperty,
 		return defaultValue
 	}
 	fileConfigPropertyValue := fileConfig.GetString(fileConfigProperty, "")
+	if fileConfigPropertyValue == "" {
+		return defaultValue
+	}
 	value, err := strconv.Atoi(fileConfigPropertyValue)
 	if err != nil {
 		log.Errorf("could not convert file configuration property named '%s' with value '%s' to int:", fileConfigProperty, fileConfigPropertyValue)

@@ -10,7 +10,6 @@ The aim of this application is to be used in the context of trainings for Docker
 
 <img width="500" alt="Screenshot 2025-06-04 at 15 40 30" src="https://github.com/user-attachments/assets/7cafc452-4f21-4202-8379-2a983ecbf122" />
 
-
 ## Available Endpoints
 
 > **_NOTE:_** The application offers the following endpoints on port **8080**
@@ -50,6 +49,8 @@ If everything is fine the application will respond with a 200 status code, if no
 | `leak cpu`          | Leak CPU                                                            |
 | `request <url>`     | Request a URL, e.g., `request https://www.kubermatic.com/`          |
 | `delay / <seconds>` | Set delay for the root endpoint (`/`) in seconds, e.g., `delay / 5` |
+| `disable /`         | The root endpoint (`/`) will respond with a 503 status code         |
+| `enable /`          | The root endpoint (`/`) will respond with a 200 status code         |
 
 > **_INSIDE A CONTAINER_** If you want to send commands to the application you have to use of `docker attach my-training-application-container`. The container als has to have `tty` enabled.
 
@@ -65,8 +66,8 @@ spec:
     - name: training-application
       image: quay.io/kubermatic-labs/training-application:3.0.0
       imagePullPolicy: Always
-      tty: true # <= add those flags
-      stdin: true # <= add those flags
+      tty: true # <= add this flag
+      stdin: true # <= add this flag
       ports:
         - name: http
           containerPort: 8080
@@ -123,12 +124,19 @@ spec:
 - **Default Value**: "not set"
 - **Usage**: via config file or via the environment variable `APP_COLOR`
 
+### `rootEnabled`
+
+- **Description**: Flag to indicate if the root endpoint (`/`) is enabled or not
+- **Type**: bool
+- **Default Value**: true
+- **Usage**: configurable via the commands `enable /` and `disable /`
+
 ### `rootDelaySeconds`
 
 - **Description**: For delaying requests to the root endpoint
 - **Type**: int
 - **Default Value**: 0
-- **Usage**: via config file or via the command `delay / <seconds>`, eg "delay / 10"
+- **Usage**: via the command `delay / <seconds>`, eg "delay / 10"
 
 ### `startUpDelaySeconds`
 

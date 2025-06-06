@@ -19,17 +19,11 @@ jobs:
         run: make build
       # - name: Lint Dockerfiles
       #   run: make docker-lint
-
-      # TODO remove this after quay creds are set
-      - name: Build all Docker Images
-        run: make docker-build-all
-
-      # - name: Login to Quay
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: quay.io
-      #     username: ${{ secrets.QUAY_USERNAME }}
-      #     password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-
-      # - name: Push all Docker Images
-      #   run: make docker-push-all
+      - name: Login to Quay
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Push all Docker Images
+        run: make docker-push-all
