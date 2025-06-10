@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -89,10 +89,7 @@ func (cli *cli) executeCommand(command string) error {
 		leakMem()
 	} else if command == "leak cpu" {
 		log.Info("Leaking CPU")
-		err := leakCpu()
-		if err != nil {
-			return fmt.Errorf("error on leaking CPU: %s", err)
-		}
+		leakCpu()
 	} else if strings.HasPrefix(command, "request ") {
 		url, _ := strings.CutPrefix(command, "request ")
 		log.Infof("Requesting URL '%s'", url)
@@ -177,36 +174,60 @@ func leakMem() {
 	}
 }
 
-func leakCpu() error {
+func leakCpu() {
 
-	// TODO is this really the smartest way to create a CPU leak?
+	var waitGroup sync.WaitGroup
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-	writer, err := os.Open(os.DevNull)
-	if err != nil {
-		log.Errorf("Error on opening /dev/null: %s", err)
-		return err
+	for range ticker.C {
+		numGoroutines := runtime.NumGoroutine()
+		fmt.Printf("Current number of goroutines: %d\n", numGoroutines)
+
+		// Spawn a new goroutine every second
+		waitGroup.Add(1)
+		go cpuIntensiveTask(&waitGroup, numGoroutines+1)
 	}
-	defer writer.Close()
-	n := runtime.NumCPU()
-	runtime.GOMAXPROCS(n)
+}	
 
-	for i := 0; i < n; i++ {
-		go func() {
-			for {
-				var usage syscall.Rusage
-				err = syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
-				if err != nil {
-					log.Errorf("Error on cpu usage: %s", err)
-				}
-				log.Infof("User CPU Time: %v\n", usage.Utime)
-				log.Infof("System CPU Time: %v\n", usage.Stime)
-				fmt.Fprintf(writer, ".")
-			}
-		}()
+func cpuIntensiveTask(waitGroup *sync.WaitGroup, id int) {
+	defer waitGroup.Done()
+	fmt.Printf("Goroutine %d started\n", id)
+	for i := 0; i < 1e9; i++ {
+		// Perform some CPU-intensive computation
+		_ = i * i
 	}
-
-	// TODO do I need this?
-	// time.Sleep(10 * time.Second)
-	return nil
-
+	fmt.Printf("Goroutine %d finished\n", id)
 }
+
+	// // TODO is this really the smartest way to create a CPU leak?
+
+	// writer, err := os.Open(os.DevNull)
+	// if err != nil {
+	// 	log.Errorf("Error on opening /dev/null: %s", err)
+	// 	return err
+	// }
+	// defer writer.Close()
+	// n := runtime.NumCPU()
+	// runtime.GOMAXPROCS(n)
+
+	// for i := 0; i < n; i++ {
+	// 	go func() {
+	// 		for {
+	// 			var usage syscall.Rusage
+	// 			err = syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
+	// 			if err != nil {
+	// 				log.Errorf("Error on cpu usage: %s", err)
+	// 			}
+	// 			log.Infof("User CPU Time: %v\n", usage.Utime)
+	// 			log.Infof("System CPU Time: %v\n", usage.Stime)
+	// 			fmt.Fprintf(writer, ".")
+	// 		}
+	// 	}()
+	// }
+
+	// // TODO do I need this?
+	// // time.Sleep(10 * time.Second)
+	// return nil
+
+// }

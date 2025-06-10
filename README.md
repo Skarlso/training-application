@@ -24,7 +24,7 @@ Eg the response could be delayed for a configurable amount of seconds.
 
 Endpoint of the application to signal if the application is in a healthy state.
 
-If everything is fine the application will respond with a 200 status code, if not the application should respond with a 503 status code.
+If everything is fine the application will respond with a 200 status code, if not the application should respond with a 500 status code.
 
 ### `/readiness`
 
