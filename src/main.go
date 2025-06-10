@@ -69,19 +69,15 @@ func getConfigFilePath() string {
 }
 
 func handleLifecycle() {
-	signalChanel := make(chan os.Signal, 1)
-	signal.Notify(signalChanel, syscall.SIGTERM)
-	exitChanel := make(chan int)
-	go handleSigterm(signalChanel, exitChanel)
-	exitCode := <-exitChanel
-	os.Exit(exitCode)
-}
 
-func handleSigterm(signalChanel chan os.Signal, exitChanel chan int) {
-	for {
+	signalChanel := make(chan os.Signal, 1)
+	signal.Notify(signalChanel, syscall.SIGTERM, syscall.SIGINT)
+	exitChanel := make(chan int)
+
+	go func(signalChanel chan os.Signal, exitChanel chan int) {
 		signal := <-signalChanel
-		if signal == syscall.SIGTERM {
-			log.Info("Got SIGTERM signal")
+		if signal == syscall.SIGTERM || signal == syscall.SIGINT {
+			log.Infof("Got signal '%s'", signal)
 			config.ready = false
 			log.Info("Application set to not ready")
 			log.Info("Starting Graceful Shutdown")
@@ -95,5 +91,8 @@ func handleSigterm(signalChanel chan os.Signal, exitChanel chan int) {
 			log.Errorf("Got unknown signal '%s'", signal)
 			exitChanel <- 1
 		}
-	}
+	}(signalChanel, exitChanel)
+
+	exitCode := <-exitChanel	
+	os.Exit(exitCode)
 }
