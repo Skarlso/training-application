@@ -36,7 +36,7 @@ func logHelp() {
 	log.Info("     set dead:            application liveness probe will fail")
 	log.Info("     leak mem:            leak memory")
 	log.Info("     leak cpu:            leak cpu")
-	log.Info("     request <url>:       request a url, eg 'request https://www.google.com'")
+	log.Info("     request <url>:       request a url, eg 'request https://www.kubermatic.com/'")
 	log.Info("     delay / <seconds>:   set delay for the root endpoint ('/') in seconds, eg 'delay / 5'")
 	log.Info("Available Endpoints:")
 	log.Info("     /:                   root endpoint, the output is depending on the application configuration")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"os"
@@ -100,6 +101,7 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	if !s.config.rootEnabled {
 		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprint(w, "The root endpoint of the application is disabled")
 		log.Info("Root endpoint ('/') responded with Status Code 503 Service Unavailable due to root endpoint is disabled")
 		return
 	}

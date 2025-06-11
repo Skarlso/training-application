@@ -2,6 +2,8 @@
 
 ## verify leak cpu method
 
+## add timestamp when the process was started
+
 ## stuff
 
 - pass in version into docker build?
