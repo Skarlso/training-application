@@ -16,6 +16,11 @@ type server struct {
 	tmpl   *template.Template
 }
 
+type header struct {
+	Name  string
+	Value string
+}
+
 // TemplateData holds all the data needed for the HTML template
 type TemplateData struct {
 	ApplicationName      string
@@ -27,6 +32,7 @@ type TemplateData struct {
 	RootDelaySeconds     int
 	StartUpDelaySeconds  int
 	TearDownDelaySeconds int
+	Headers              []*header
 	LogToFileOnly        bool
 	ProcessID            int
 	UserID               int
@@ -41,8 +47,8 @@ const htmlTemplate = `<!DOCTYPE html>
 </head>
 <body style='background-color:{{.Color}};'>
     <h1>{{.ApplicationName}}</h1>
-    
-    <h2>Configuration</h2>
+
+		<h2>Configuration</h2>
     Application Version: {{.ApplicationVersion}}<br>
     Application Message: {{.ApplicationMessage}}<br>
     Application Liveness: {{.Alive}}<br>
@@ -53,9 +59,16 @@ const htmlTemplate = `<!DOCTYPE html>
     Only log to file: {{.LogToFileOnly}}<br>
     
     <h2>Tech Details</h2>
+
+		<h3>About the Application</h3>
     Process Id of the application: {{.ProcessID}}<br>
     User Id the application is using: {{.UserID}}<br>
     Hostname: {{.Hostname}}<br>
+
+		<h3>About the Request</h3>
+		{{range .Headers}}
+    {{.Name}}: {{.Value}}<br>
+    {{end}}
     
     {{if .CatImageURL}}
     <h2>The cute cat</h2>
@@ -94,6 +107,18 @@ func (s *server) run() {
 	if err != nil {
 		log.Errorf("Error on starting the server: '%s'", err)
 	}
+}
+
+func logHeader(request *http.Request, headerName string, template *TemplateData) {
+	headerValue := request.Header.Get(headerName)
+	header := header{Name:headerName, Value:""}
+	if headerValue != "" {
+			log.Infof("     Header named '%s' has value: %s", headerName, headerValue)
+			header.Value = headerValue
+	} else {
+			log.Infof("     Header named '%s' not set", headerName)
+	}
+	template.Headers = append(template.Headers, &header)
 }
 
 func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +160,10 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		Hostname:             hostname,
 		CatImageURL:          s.config.catImageUrl,
 	}
+
+	logHeader(r, "X-Forwarded-Proto", &data)
+	logHeader(r, "X-Forwarded-For", &data)
+	logHeader(r, "X-Forwarded-Port", &data)
 
 	// Set content type and execute template
 	w.Header().Set("Content-Type", "text/html")
