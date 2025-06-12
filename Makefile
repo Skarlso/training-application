@@ -16,7 +16,7 @@ lint:
 	cd src && golangci-lint run --timeout=5m
 
 .PHONY: build
-build: lint
+build: 
 	cd src && go build -o ../${APPLICATION_NAME} .
 
 .PHONY: run
