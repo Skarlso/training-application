@@ -25,7 +25,7 @@ func main() {
 	log.Info("Initializing the application configuration")
 	config = newAppConfig(configFilePath)
 	config.initAppConfig(false)
-	config.logAppConfig()
+	log.Info(config)
 
 	if config.logToFileOnly {
 		log.Warn("Switching to log file only mode, subsequent logs will happen in the file 'application.log'")
@@ -33,7 +33,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Errorf("error on closing: %v", err)
+			}
+		}()
+
 		log.SetOutput(file)
 	}
 
@@ -50,8 +55,6 @@ func main() {
 
 	server := newServer(config)
 
-	hostName, _ := os.Hostname()
-	log.Infof("Application started with PID %d, UID %d on host with name %s; listenting on port 8080", os.Getpid(), os.Getuid(), hostName)
 	config.ready = true
 	log.Info("Application set to ready")
 	log.Info("For getting help, type 'help'")
@@ -88,11 +91,11 @@ func handleLifecycle() {
 			log.Info("Graceful Shutdown has finished")
 			exitChanel <- 0
 		} else {
-			log.Errorf("Got unknown signal '%s'", signal)
+			log.Errorf("got unknown signal '%s'", signal)
 			exitChanel <- 1
 		}
 	}(signalChanel, exitChanel)
 
-	exitCode := <-exitChanel	
+	exitCode := <-exitChanel
 	os.Exit(exitCode)
 }

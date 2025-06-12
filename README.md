@@ -82,6 +82,13 @@ spec:
 - **Default Value**: "./training-application.conf"
 - **Usage**: application arg, you can set this via eg `./training-application --configFilePath my.conf`
 
+### `port`
+
+- **Description**: Port on which the application provides its services
+- **Type**: int
+- **Default Value**: 8080
+- **Usage**: via config file
+
 ### `alive`
 
 - **Description**: Flag to indicate the applications liveness

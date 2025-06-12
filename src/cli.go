@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,23 +27,25 @@ func newCli(appConfig *appConfig) *cli {
 	}
 }
 
-func logHelp() {
-	log.Info("Available Commands:")
-	log.Info("     help:                get info about available commands and endpoints")
-	log.Info("     init:                set readiness true, liveness true and delay 0")
-	log.Info("     config:              print out the current application configuration")
-	log.Info("     set ready:           application readiness probe will be successful")
-	log.Info("     set unready:         application readiness probe will fail")
-	log.Info("     set alive:           application liveness probe will be successful")
-	log.Info("     set dead:            application liveness probe will fail")
-	log.Info("     leak mem:            leak memory")
-	log.Info("     leak cpu:            leak cpu")
-	log.Info("     request <url>:       request a url, eg 'request https://www.kubermatic.com/'")
-	log.Info("     delay / <seconds>:   set delay for the root endpoint ('/') in seconds, eg 'delay / 5'")
-	log.Info("Available Endpoints:")
-	log.Info("     /:                   root endpoint, the output is depending on the application configuration")
-	log.Info("     /liveness:           liveness probe")
-	log.Info("     /readiness:          readiness probe")
+func createHelpText() string {
+	var sb strings.Builder
+	sb.WriteString("\nAvailable Commands:\n")
+	sb.WriteString("\thelp:                get info about available commands and endpoints\n")
+	sb.WriteString("\tinit:                set readiness true, liveness true and delay 0\n")
+	sb.WriteString("\tconfig:              print out the current application configuration\n")
+	sb.WriteString("\tset ready:           application readiness probe will be successful\n")
+	sb.WriteString("\tset unready:         application readiness probe will fail\n")
+	sb.WriteString("\tset alive:           application liveness probe will be successful\n")
+	sb.WriteString("\tset dead:            application liveness probe will fail\n")
+	sb.WriteString("\tleak mem:            leak memory\n")
+	sb.WriteString("\tleak cpu:            leak cpu\n")
+	sb.WriteString("\trequest <url>:       request a url, eg 'request https://www.kubermatic.com/'\n")
+	sb.WriteString("\tdelay / <seconds>:   set delay for the root endpoint ('/') in seconds, eg 'delay / 5'\n")
+	sb.WriteString("\table Endpoints:\n")
+	sb.WriteString("\t/:                   root endpoint, the output is depending on the application configuration\n")
+	sb.WriteString("\t/liveness:           liveness probe\n")
+	sb.WriteString("\t/readiness:          readiness probe\n")
+	return sb.String()
 }
 
 func (cli *cli) handleStdin() {
@@ -49,13 +53,13 @@ func (cli *cli) handleStdin() {
 	for {
 		text, err := reader.ReadString('\n')
 		if err != nil {
-			log.Errorf("Error on reading from stdin: '%s'", err)
+			log.Errorf("error on reading from stdin: '%s'", err)
 		}
 		text = strings.ReplaceAll(text, "\n", "")
 		if text != "" {
 			err = cli.executeCommand(text)
 			if err != nil {
-				log.Errorf("Error on handling command '%s': %s", text, err)
+				log.Errorf("error on handling command '%s': %s", text, err)
 			}
 		}
 	}
@@ -64,14 +68,14 @@ func (cli *cli) handleStdin() {
 func (cli *cli) executeCommand(command string) error {
 
 	if command == "help" {
-		logHelp()
+		log.Info(createHelpText())
 	} else if command == "init" {
 		log.Info("Re-initializing the application configuration")
 		cli.config.initAppConfig(true)
 		cli.config.ready = true
-		cli.config.logAppConfig()
+		log.Info(cli.config)
 	} else if command == "config" {
-		cli.config.logAppConfig()
+		log.Info(cli.config)
 	} else if command == "set ready" {
 		cli.config.ready = true
 		log.Info("Set the application to ready")
@@ -107,10 +111,10 @@ func (cli *cli) executeCommand(command string) error {
 		log.Infof("Set delay for the root endpoint ('/') to '%d' seconds", cli.config.rootDelaySeconds)
 	} else if strings.HasPrefix(command, "disable /") {
 		cli.config.rootEnabled = false
-		log.Info("Disabled the root endpoint ('/')")	
+		log.Info("Disabled the root endpoint ('/')")
 	} else if strings.HasPrefix(command, "enable /") {
 		cli.config.rootEnabled = true
-		log.Info("Enabled the root endpoint ('/')")	
+		log.Info("Enabled the root endpoint ('/')")
 	} else {
 		return fmt.Errorf("unknown command '%s'", command)
 	}
@@ -123,24 +127,35 @@ func request(url string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Errorf("error on closing: %v", err)
+		}
+	}()
 
 	log.Infof("StatusCode of response %d", resp.StatusCode)
 
 	if resp.TLS == nil {
 		log.Info("Response is not encrypted")
+		clientCertHeader := resp.Header.Get("X-Client-Cert")
+		if clientCertHeader != "" {
+			certData, err := base64.StdEncoding.DecodeString(clientCertHeader)
+			if err != nil {
+				log.Errorf("error decoding proxied certificate: %s", err)
+			}
+			cert, err := x509.ParseCertificate(certData)
+			if err != nil {
+				log.Errorf("error parsing proxied certificate: %s", err)
+			}
+			log.Info(getCertString("Proxied certificate", cert))
+		} else {
+			log.Infof("No proxied certificate found")
+		}
 	} else {
 		log.Info("Response is encrypted")
 		log.Infof("TLS Version: %d", resp.TLS.Version)
-		for _, cert := range resp.TLS.PeerCertificates {
-			log.Infof("Certificate Subject: %s", cert.Subject.String())
-			log.Infof("Certificate Issuer: %s", cert.Issuer.String())
-			log.Infof("Certificate Serial Number: %s", cert.SerialNumber.String())
-			log.Infof("Certificate Not Before: %s", cert.NotBefore.String())
-			log.Infof("Certificate Not After: %s", cert.NotAfter.String())
-			log.Infof("Certificate DNS Names: %v", cert.DNSNames)
-			log.Infof("Certificate Email Addresses: %v", cert.EmailAddresses)
-			log.Infof("Certificate IP Addresses: %v", cert.IPAddresses)
+		for i, cert := range resp.TLS.PeerCertificates {
+			log.Info(getCertString(fmt.Sprintf("Certificate %d", i+1), cert))
 		}
 	}
 
@@ -154,6 +169,20 @@ func request(url string) error {
 	}
 	log.Infof("Response Body: %s", bodyString)
 	return nil
+}
+
+func getCertString(header string, cert *x509.Certificate) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%s: \n", header))
+	sb.WriteString(fmt.Sprintf("\tCertificate Subject: %s\n", cert.Subject.String()))
+	sb.WriteString(fmt.Sprintf("\tCertificate Issuer: %s\n", cert.Issuer.String()))
+	sb.WriteString(fmt.Sprintf("\tCertificate Serial Number: %s\n", cert.SerialNumber.String()))
+	sb.WriteString(fmt.Sprintf("\tCertificate Not Before: %s\n", cert.NotBefore.String()))
+	sb.WriteString(fmt.Sprintf("\tCertificate Not After: %s\n", cert.NotAfter.String()))
+	sb.WriteString(fmt.Sprintf("\tCertificate DNS Names: %v\n", cert.DNSNames))
+	sb.WriteString(fmt.Sprintf("\tCertificate Email Addresses: %v\n", cert.EmailAddresses))
+	sb.WriteString(fmt.Sprintf("\tCertificate IP Addresses: %v\n", cert.IPAddresses))
+	return sb.String()
 }
 
 func leakMem() {
@@ -170,7 +199,7 @@ func leakMem() {
 		}
 		time.Sleep(time.Nanosecond)
 		count++
-		memLeak = append(memLeak, "THIS IS A MEM LEAK")
+		memLeak = append(memLeak, "THIS IS A MEM LEAK") //nolint:staticcheck
 	}
 }
 
@@ -188,7 +217,7 @@ func leakCpu() {
 		waitGroup.Add(1)
 		go cpuIntensiveTask(&waitGroup, numGoroutines+1)
 	}
-}	
+}
 
 func cpuIntensiveTask(waitGroup *sync.WaitGroup, id int) {
 	defer waitGroup.Done()
@@ -200,34 +229,34 @@ func cpuIntensiveTask(waitGroup *sync.WaitGroup, id int) {
 	fmt.Printf("Goroutine %d finished\n", id)
 }
 
-	// // TODO is this really the smartest way to create a CPU leak?
+// // TODO is this really the smartest way to create a CPU leak?
 
-	// writer, err := os.Open(os.DevNull)
-	// if err != nil {
-	// 	log.Errorf("Error on opening /dev/null: %s", err)
-	// 	return err
-	// }
-	// defer writer.Close()
-	// n := runtime.NumCPU()
-	// runtime.GOMAXPROCS(n)
+// writer, err := os.Open(os.DevNull)
+// if err != nil {
+// 	log.Errorf("error on opening /dev/null: %s", err)
+// 	return err
+// }
+// defer writer.Close()
+// n := runtime.NumCPU()
+// runtime.GOMAXPROCS(n)
 
-	// for i := 0; i < n; i++ {
-	// 	go func() {
-	// 		for {
-	// 			var usage syscall.Rusage
-	// 			err = syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
-	// 			if err != nil {
-	// 				log.Errorf("Error on cpu usage: %s", err)
-	// 			}
-	// 			log.Infof("User CPU Time: %v\n", usage.Utime)
-	// 			log.Infof("System CPU Time: %v\n", usage.Stime)
-	// 			fmt.Fprintf(writer, ".")
-	// 		}
-	// 	}()
-	// }
+// for i := 0; i < n; i++ {
+// 	go func() {
+// 		for {
+// 			var usage syscall.Rusage
+// 			err = syscall.Getrusage(syscall.RUSAGE_SELF, &usage)
+// 			if err != nil {
+// 				log.Errorf("error on cpu usage: %s", err)
+// 			}
+// 			log.Infof("User CPU Time: %v\n", usage.Utime)
+// 			log.Infof("System CPU Time: %v\n", usage.Stime)
+// 			fmt.Fprintf(writer, ".")
+// 		}
+// 	}()
+// }
 
-	// // TODO do I need this?
-	// // time.Sleep(10 * time.Second)
-	// return nil
+// // TODO do I need this?
+// // time.Sleep(10 * time.Second)
+// return nil
 
 // }

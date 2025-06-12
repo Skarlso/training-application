@@ -1,14 +1,20 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
+
+//go:embed root.html
+var rootTmplContent string
 
 type server struct {
 	config *appConfig
@@ -16,13 +22,52 @@ type server struct {
 	tmpl   *template.Template
 }
 
-type header struct {
-	Name  string
-	Value string
+type requestInfo struct {
+	Method                string
+	Url                   string
+	Proto                 string
+	Host                  string
+	RemoteAddr            string
+	RequestUri            string
+	TLS                   bool
+	HeaderXForwardedProto string
+	HeaderXForwardedFor   string
+	HeaderXForwardedPort  string
 }
 
-// TemplateData holds all the data needed for the HTML template
+func newRequestInfo(r *http.Request) *requestInfo {
+	return &requestInfo{
+		Method:                r.Method,
+		Url:                   r.URL.String(),
+		Proto:                 r.Proto,
+		Host:                  r.Host,
+		RemoteAddr:            r.RemoteAddr,
+		RequestUri:            r.RequestURI,
+		TLS:                   r.TLS != nil,
+		HeaderXForwardedProto: r.Header.Get("X-Forwarded-Proto"),
+		HeaderXForwardedFor:   r.Header.Get("X-Forwarded-For"),
+		HeaderXForwardedPort:  r.Header.Get("X-Forwarded-Port"),
+	}
+}
+
+func (ri *requestInfo) String() string {
+	var sb strings.Builder
+	sb.WriteString("Request Info: \n")
+	sb.WriteString(fmt.Sprintf("\tMethod:                %v\n", ri.Method))
+	sb.WriteString(fmt.Sprintf("\tUrl:                   %v\n", ri.Url))
+	sb.WriteString(fmt.Sprintf("\tProto:                 %v\n", ri.Proto))
+	sb.WriteString(fmt.Sprintf("\tHost:                  %v\n", ri.Host))
+	sb.WriteString(fmt.Sprintf("\tRemoteAddr:            %v\n", ri.RemoteAddr))
+	sb.WriteString(fmt.Sprintf("\tRequestUri:            %v\n", ri.RequestUri))
+	sb.WriteString(fmt.Sprintf("\tTLS:                   %v\n", ri.TLS))
+	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedProto: %v\n", ri.HeaderXForwardedProto))
+	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedFor:   %v\n", ri.HeaderXForwardedFor))
+	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedPort:  %v\n", ri.HeaderXForwardedPort))
+	return sb.String()
+}
+
 type TemplateData struct {
+	ApplicationPort      int
 	ApplicationName      string
 	ApplicationVersion   string
 	ApplicationMessage   string
@@ -32,68 +77,30 @@ type TemplateData struct {
 	RootDelaySeconds     int
 	StartUpDelaySeconds  int
 	TearDownDelaySeconds int
-	Headers              []*header
+	RequestInfo          *requestInfo
 	LogToFileOnly        bool
-	ProcessID            int
-	UserID               int
+	ProcessId            int
+	UserId               int
 	Hostname             string
 	CatImageURL          string
 }
 
-const htmlTemplate = `<!DOCTYPE html>
-<html>
-<head>
-    <title>{{.ApplicationName}} {{.ApplicationVersion}}</title>
-</head>
-<body style='background-color:{{.Color}};'>
-    <h1>{{.ApplicationName}}</h1>
-
-		<h2>Configuration</h2>
-    Application Version: {{.ApplicationVersion}}<br>
-    Application Message: {{.ApplicationMessage}}<br>
-    Application Liveness: {{.Alive}}<br>
-    Application Readiness: {{.Ready}}<br>
-    Delay seconds of root endpoint ('/'): {{.RootDelaySeconds}}<br>
-    Seconds the application needs to start up: {{.StartUpDelaySeconds}}<br>
-    Seconds the application needs to shut down gracefully: {{.TearDownDelaySeconds}}<br>
-    Only log to file: {{.LogToFileOnly}}<br>
-    
-    <h2>Tech Details</h2>
-
-		<h3>About the Application</h3>
-    Process Id of the application: {{.ProcessID}}<br>
-    User Id the application is using: {{.UserID}}<br>
-    Hostname: {{.Hostname}}<br>
-
-		<h3>About the Request</h3>
-		{{range .Headers}}
-    {{.Name}}: {{.Value}}<br>
-    {{end}}
-    
-    {{if .CatImageURL}}
-    <h2>The cute cat</h2>
-    <img src='{{.CatImageURL}}' width='500px'></img>
-    {{end}}
-</body>
-</html>`
-
 func newServer(appConfig *appConfig) *server {
-	// Parse the HTML template
-	tmpl, err := template.New("index").Parse(htmlTemplate)
+
+	rootTmpl, err := template.New("root").Parse(rootTmplContent)
+
 	if err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 
-	// Create a new ServeMux
 	mux := http.NewServeMux()
 
 	server := &server{
 		config: appConfig,
 		mux:    mux,
-		tmpl:   tmpl,
+		tmpl:   rootTmpl,
 	}
 
-	// Register handlers with the mux
 	mux.HandleFunc("/", server.handleRoot)
 	mux.HandleFunc("/favicon.ico", server.handleFavicon)
 	mux.HandleFunc("/liveness", server.handleLiveness)
@@ -103,35 +110,29 @@ func newServer(appConfig *appConfig) *server {
 }
 
 func (s *server) run() {
-	err := http.ListenAndServe(":8080", s.mux)
+	hostName, _ := os.Hostname()
+	log.Infof("Application started with PID %d, UID %d on host with name %s; listenting on port %d", os.Getpid(), os.Getuid(), hostName, config.applicationPort)
+	err := http.ListenAndServe(":"+strconv.Itoa(s.config.applicationPort), s.mux)
 	if err != nil {
-		log.Errorf("Error on starting the server: '%s'", err)
+		log.Errorf("error on starting the server: '%s'", err)
 	}
-}
-
-func logHeader(request *http.Request, headerName string, template *TemplateData) {
-	headerValue := request.Header.Get(headerName)
-	header := header{Name:headerName, Value:""}
-	if headerValue != "" {
-			log.Infof("     Header named '%s' has value: %s", headerName, headerValue)
-			header.Value = headerValue
-	} else {
-			log.Infof("     Header named '%s' not set", headerName)
-	}
-	template.Headers = append(template.Headers, &header)
 }
 
 func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request to root endpoint ('/')")
+	requestInfo := newRequestInfo(r)
+	log.Info(requestInfo)
 
 	if !s.config.rootEnabled {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprint(w, "The root endpoint of the application is disabled")
+		_, err := fmt.Fprint(w, "The root endpoint of the application is disabled")
+		if err != nil {
+			log.Errorf("error on writing response for root endpoint ('/'): %s", err)
+		}
 		log.Info("Root endpoint ('/') responded with Status Code 503 Service Unavailable due to root endpoint is disabled")
 		return
 	}
 
-	// Handle delay if configured
 	if s.config.rootDelaySeconds > 0 {
 		for i := 0; i < s.config.rootDelaySeconds; i++ {
 			log.Infof("Delayed Response for %d of %d seconds", i+1, s.config.rootDelaySeconds)
@@ -140,11 +141,10 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		log.Info("Finished delaying Response")
 	}
 
-	// Get hostname
 	hostname, _ := os.Hostname()
 
-	// Prepare template data
 	data := TemplateData{
+		ApplicationPort:      s.config.applicationPort,
 		ApplicationName:      s.config.applicationName,
 		ApplicationVersion:   s.config.applicationVersion,
 		ApplicationMessage:   s.config.applicationMessage,
@@ -155,20 +155,16 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		StartUpDelaySeconds:  s.config.startUpDelaySeconds,
 		TearDownDelaySeconds: s.config.tearDownDelaySeconds,
 		LogToFileOnly:        s.config.logToFileOnly,
-		ProcessID:            os.Getpid(),
-		UserID:               os.Getuid(),
+		ProcessId:            os.Getpid(),
+		UserId:               os.Getuid(),
+		RequestInfo:          requestInfo,
 		Hostname:             hostname,
 		CatImageURL:          s.config.catImageUrl,
 	}
 
-	logHeader(r, "X-Forwarded-Proto", &data)
-	logHeader(r, "X-Forwarded-For", &data)
-	logHeader(r, "X-Forwarded-Port", &data)
-
-	// Set content type and execute template
 	w.Header().Set("Content-Type", "text/html")
 	if err := s.tmpl.Execute(w, data); err != nil {
-		log.Errorf("Error executing template: %v", err)
+		log.Errorf("error executing template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>{{.ApplicationName}} {{.ApplicationVersion}}</title>
+</head>
+
+<body style='background-color:{{.Color}};'>
+  <h1>{{.ApplicationName}}</h1>
+
+  <h2>Configuration</h2>
+  Application Port: {{.ApplicationPort}}<br>
+  Application Version: {{.ApplicationVersion}}<br>
+  Application Message: {{.ApplicationMessage}}<br>
+  Application Liveness: {{.Alive}}<br>
+  Application Readiness: {{.Ready}}<br>
+  Delay seconds of root endpoint ('/'): {{.RootDelaySeconds}}<br>
+  Seconds the application needs to start up: {{.StartUpDelaySeconds}}<br>
+  Seconds the application needs to shut down gracefully: {{.TearDownDelaySeconds}}<br>
+  Only log to file: {{.LogToFileOnly}}<br>
+
+  <h2>Tech Details</h2>
+
+  <h3>About the Application</h3>
+  Process Id of the application: {{.ProcessId}}<br>
+  User Id the application is using: {{.UserId}}<br>
+  Hostname: {{.Hostname}}<br>
+
+  <h3>About the Request</h3>
+  Method: {{.RequestInfo.Method}}<br>
+  Url: {{.RequestInfo.Url}}<br>
+  Proto: {{.RequestInfo.Proto}}<br>
+  Host: {{.RequestInfo.Host}}<br>
+  RemoteAddr: {{.RequestInfo.RemoteAddr}}<br>
+  RequestUri: {{.RequestInfo.RequestUri}}<br>
+  TLS: {{.RequestInfo.TLS}}<br>
+  HeaderXForwardedProto: {{.RequestInfo.HeaderXForwardedProto}}<br>
+  HeaderXForwardedFor: {{.RequestInfo.HeaderXForwardedFor}}<br>
+  HeaderXForwardedPort: {{.RequestInfo.HeaderXForwardedPort}}<br>
+
+  {{if .CatImageURL}}
+  <h2>The cute cat</h2>
+  <img src='{{.CatImageURL}}' width='500px'></img>
+  {{end}}
+</body>
+
+</html>

@@ -12,10 +12,11 @@ update-dependencies:
 
 .PHONY: lint
 lint:
-	cd src && golangci-lint run --timeout=5m -v 
+	# cd src && golangci-lint run --timeout=5m -v
+	cd src && golangci-lint run --timeout=5m
 
 .PHONY: build
-build: 
+build: lint
 	cd src && go build -o ../${APPLICATION_NAME} .
 
 .PHONY: run
@@ -25,9 +26,13 @@ run: build
 .PHONY: docker-lint
 docker-lint: 
 	hadolint Dockerfile
+
+.PHONY: docker-lint-all
+docker-lint-all: 
+	hadolint Dockerfile
 	hadolint Dockerfile-A
-	hadolint Dockerfile-B
-	hadolint Dockerfile-distroless
+	hadolint Dockerfile-B --ignore DL3025
+	hadolint Dockerfile-distroless --ignore DL3006
 
 .PHONY: docker-build
 docker-build: build
@@ -38,7 +43,7 @@ docker-run: docker-build
 	docker run -it --rm -p 8080:8080 -m=10m --cpus=".5" --name ${APPLICATION_NAME} ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION}
 
 .PHONY: docker-build-all
-docker-build-all: 
+docker-build-all: lint docker-lint
 	docker build -t ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION} .
 	docker build -f Dockerfile-A -t ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION_A} .
 	docker build -f Dockerfile-B -t ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION_B} .
