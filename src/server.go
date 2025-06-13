@@ -152,6 +152,3 @@ func (s *server) handleReadiness(w http.ResponseWriter, r *http.Request) {
 		log.Info("Readiness endpoint ('/readiness') responded with Status Code 503 Service Unavailable")
 	}
 }
-
-
-ist es in österreich erlaubt irreführende sponsored links auf google zu schalten, welche auf die falschen webpages verweisen
