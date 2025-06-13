@@ -2,8 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -133,31 +131,7 @@ func request(url string) error {
 		}
 	}()
 
-	log.Infof("StatusCode of response %d", resp.StatusCode)
-
-	if resp.TLS == nil {
-		log.Info("Response is not encrypted")
-		clientCertHeader := resp.Header.Get("X-Client-Cert")
-		if clientCertHeader != "" {
-			certData, err := base64.StdEncoding.DecodeString(clientCertHeader)
-			if err != nil {
-				log.Errorf("error decoding proxied certificate: %s", err)
-			}
-			cert, err := x509.ParseCertificate(certData)
-			if err != nil {
-				log.Errorf("error parsing proxied certificate: %s", err)
-			}
-			log.Info(getCertString("Proxied certificate", cert))
-		} else {
-			log.Infof("No proxied certificate found")
-		}
-	} else {
-		log.Info("Response is encrypted")
-		log.Infof("TLS Version: %d", resp.TLS.Version)
-		for i, cert := range resp.TLS.PeerCertificates {
-			log.Info(getCertString(fmt.Sprintf("Certificate %d", i+1), cert))
-		}
-	}
+	log.Info(newResponseInfo(resp))
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -167,22 +141,8 @@ func request(url string) error {
 	if len(bodyString) >= 100 {
 		bodyString = bodyString[:100]
 	}
-	log.Infof("Response Body: %s", bodyString)
+	log.Infof("Response Body: \n%s", bodyString)
 	return nil
-}
-
-func getCertString(header string, cert *x509.Certificate) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s: \n", header))
-	sb.WriteString(fmt.Sprintf("\tCertificate Subject: %s\n", cert.Subject.String()))
-	sb.WriteString(fmt.Sprintf("\tCertificate Issuer: %s\n", cert.Issuer.String()))
-	sb.WriteString(fmt.Sprintf("\tCertificate Serial Number: %s\n", cert.SerialNumber.String()))
-	sb.WriteString(fmt.Sprintf("\tCertificate Not Before: %s\n", cert.NotBefore.String()))
-	sb.WriteString(fmt.Sprintf("\tCertificate Not After: %s\n", cert.NotAfter.String()))
-	sb.WriteString(fmt.Sprintf("\tCertificate DNS Names: %v\n", cert.DNSNames))
-	sb.WriteString(fmt.Sprintf("\tCertificate Email Addresses: %v\n", cert.EmailAddresses))
-	sb.WriteString(fmt.Sprintf("\tCertificate IP Addresses: %v\n", cert.IPAddresses))
-	return sb.String()
 }
 
 func leakMem() {

@@ -22,6 +22,8 @@
 
 ## linting in github action
 
+## add log requests flag => too much info for easy trainings not handling networking
+
 ## packaging
 
 - linux service (for LF training)

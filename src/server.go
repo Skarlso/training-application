@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -20,50 +19,6 @@ type server struct {
 	config *appConfig
 	mux    *http.ServeMux
 	tmpl   *template.Template
-}
-
-type requestInfo struct {
-	Method                string
-	Url                   string
-	Proto                 string
-	Host                  string
-	RemoteAddr            string
-	RequestUri            string
-	TLS                   bool
-	HeaderXForwardedProto string
-	HeaderXForwardedFor   string
-	HeaderXForwardedPort  string
-}
-
-func newRequestInfo(r *http.Request) *requestInfo {
-	return &requestInfo{
-		Method:                r.Method,
-		Url:                   r.URL.String(),
-		Proto:                 r.Proto,
-		Host:                  r.Host,
-		RemoteAddr:            r.RemoteAddr,
-		RequestUri:            r.RequestURI,
-		TLS:                   r.TLS != nil,
-		HeaderXForwardedProto: r.Header.Get("X-Forwarded-Proto"),
-		HeaderXForwardedFor:   r.Header.Get("X-Forwarded-For"),
-		HeaderXForwardedPort:  r.Header.Get("X-Forwarded-Port"),
-	}
-}
-
-func (ri *requestInfo) String() string {
-	var sb strings.Builder
-	sb.WriteString("Request Info: \n")
-	sb.WriteString(fmt.Sprintf("\tMethod:                %v\n", ri.Method))
-	sb.WriteString(fmt.Sprintf("\tUrl:                   %v\n", ri.Url))
-	sb.WriteString(fmt.Sprintf("\tProto:                 %v\n", ri.Proto))
-	sb.WriteString(fmt.Sprintf("\tHost:                  %v\n", ri.Host))
-	sb.WriteString(fmt.Sprintf("\tRemoteAddr:            %v\n", ri.RemoteAddr))
-	sb.WriteString(fmt.Sprintf("\tRequestUri:            %v\n", ri.RequestUri))
-	sb.WriteString(fmt.Sprintf("\tTLS:                   %v\n", ri.TLS))
-	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedProto: %v\n", ri.HeaderXForwardedProto))
-	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedFor:   %v\n", ri.HeaderXForwardedFor))
-	sb.WriteString(fmt.Sprintf("\tHeaderXForwardedPort:  %v\n", ri.HeaderXForwardedPort))
-	return sb.String()
 }
 
 type TemplateData struct {
@@ -197,3 +152,6 @@ func (s *server) handleReadiness(w http.ResponseWriter, r *http.Request) {
 		log.Info("Readiness endpoint ('/readiness') responded with Status Code 503 Service Unavailable")
 	}
 }
+
+
+ist es in österreich erlaubt irreführende sponsored links auf google zu schalten, welche auf die falschen webpages verweisen

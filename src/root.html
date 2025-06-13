@@ -34,9 +34,10 @@
   RemoteAddr: {{.RequestInfo.RemoteAddr}}<br>
   RequestUri: {{.RequestInfo.RequestUri}}<br>
   TLS: {{.RequestInfo.TLS}}<br>
-  HeaderXForwardedProto: {{.RequestInfo.HeaderXForwardedProto}}<br>
-  HeaderXForwardedFor: {{.RequestInfo.HeaderXForwardedFor}}<br>
-  HeaderXForwardedPort: {{.RequestInfo.HeaderXForwardedPort}}<br>
+  Header:<br>
+  {{ range $key, $value := .RequestInfo.Header }}
+  {{$key}}: {{$value}}<br>
+  {{ end}}
 
   {{if .CatImageURL}}
   <h2>The cute cat</h2>
