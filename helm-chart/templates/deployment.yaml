@@ -14,7 +14,7 @@ spec:
       labels:
         app: my-app
     spec:
-      terminationGracePeriodSeconds: 0
+      terminationGracePeriodSeconds: 15
       containers:
         - name: blue
           image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
