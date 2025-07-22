@@ -9,3 +9,6 @@ catMode: true
 
 service:
   type: ClusterIP
+
+deployment:
+  replicas: 1
