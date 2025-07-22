@@ -2,8 +2,6 @@
 
 ## verify leak cpu method
 
-## add timestamp when the process was started
-
 ## add ip info to application
 
 ## make root.html configurable (parse on runtime) for CF
