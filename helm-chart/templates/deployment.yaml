@@ -16,7 +16,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 15
       containers:
-        - name: blue
+        - name: my-app
           image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           tty: true
