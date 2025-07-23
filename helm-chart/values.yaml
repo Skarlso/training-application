@@ -15,3 +15,4 @@ service:
 
 ingress:
   enabled: false
+  domain: example.com
