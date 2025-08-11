@@ -55,6 +55,17 @@ func main() {
 
 	server := newServer(config)
 
+	if !config.persistMetaInfo {
+		log.Info("Application does not persist meta info")
+	} else {
+		persister, err := newPersister(config)
+		if err != nil {
+			log.Errorf("error on starting persistence %v", err)
+		} else {
+			go persister.writeMetaInfo()
+		}
+	}
+
 	config.ready = true
 	log.Info("Application set to ready")
 	log.Info("For getting help, type 'help'")

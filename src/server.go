@@ -34,6 +34,7 @@ type TemplateData struct {
 	TearDownDelaySeconds int
 	RequestInfo          *requestInfo
 	LogToFileOnly        bool
+	PersistMetaInfo      bool
 	ProcessId            int
 	UserId               int
 	Hostname             string
@@ -110,6 +111,7 @@ func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		StartUpDelaySeconds:  s.config.startUpDelaySeconds,
 		TearDownDelaySeconds: s.config.tearDownDelaySeconds,
 		LogToFileOnly:        s.config.logToFileOnly,
+		PersistMetaInfo:      s.config.persistMetaInfo,
 		ProcessId:            os.Getpid(),
 		UserId:               os.Getuid(),
 		RequestInfo:          requestInfo,

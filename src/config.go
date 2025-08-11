@@ -28,6 +28,7 @@ type appConfig struct {
 	applicationMessage   string
 	color                string
 	logToFileOnly        bool
+	persistMetaInfo      bool
 	catImageUrl          string
 }
 
@@ -47,6 +48,7 @@ func (appConfig *appConfig) String() string {
 	sb.WriteString(fmt.Sprintf("\tApplication message:    %s\n", appConfig.applicationMessage))
 	sb.WriteString(fmt.Sprintf("\tcolor:                  %s\n", appConfig.color))
 	sb.WriteString(fmt.Sprintf("\tlogToFileOnly:          %v\n", appConfig.logToFileOnly))
+	sb.WriteString(fmt.Sprintf("\tpersistMetaInfo:        %v\n", appConfig.persistMetaInfo))
 	sb.WriteString(fmt.Sprintf("\tcatImageUrl:            %s\n", appConfig.catImageUrl))
 	return sb.String()
 }
@@ -83,6 +85,7 @@ func (appConfig *appConfig) initAppConfig(isReady bool) {
 	appConfig.applicationMessage = getAppConfigStringValue(fileConfig, "message", "APP_MESSAGE", "not set")
 	appConfig.color = getAppConfigStringValue(fileConfig, "color", "APP_COLOR", "not set")
 	appConfig.logToFileOnly = getAppConfigBoolValue(fileConfig, "logToFileOnly", "", false)
+	appConfig.persistMetaInfo = getAppConfigBoolValue(fileConfig, "persistMetaInfo", "", false)
 	appConfig.startUpDelaySeconds = getAppConfigIntValue(fileConfig, "startUpDelaySeconds", "", 0)
 	appConfig.tearDownDelaySeconds = getAppConfigIntValue(fileConfig, "tearDownDelaySeconds", "", 0)
 	catMode := getAppConfigBoolValue(fileConfig, "catMode", "", false)
