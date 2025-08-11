@@ -40,10 +40,11 @@ func (p *persister) writeMetaInfo() {
 	for {
 		select {
 		case <-ticker.C:
+			workerNodeName := os.Getenv("WORKER_NODE_NAME")
 			podName := os.Getenv("POD_NAME")
 			podIP := os.Getenv("POD_IP")
 			timeStamp := time.Now().Format("2006-01-02 15:04:05")
-			_, err = fmt.Fprintf(metaInfoFile, "%s pod name %s, pod ip %s\n", timeStamp, podName, podIP)
+			_, err = fmt.Fprintf(metaInfoFile, "%s worker node name %s, pod name %s, pod ip %s\n", timeStamp, workerNodeName, podName, podIP)
 			if err != nil {
 				log.Errorf("cannot append to file %s: %v\n", metaInfoFilePath, err)
 				return
