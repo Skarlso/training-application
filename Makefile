@@ -65,3 +65,4 @@ docker-push-all:
 helm-push:
 	helm package ./helm-chart --version ${HELM_CHART_VERSION}
 	helm push --debug training-application-${HELM_CHART_VERSION}.tgz oci://quay.io/kubermatic-labs/helm-charts/
+
