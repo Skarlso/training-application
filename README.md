@@ -8,8 +8,6 @@ The aim of this application is to be used in the context of trainings for Docker
 
 **Nothing**, besides possibly (depending on the application configuration) showing a cute cat image 🙀.
 
-<img width="500" alt="Screenshot 2025-06-04 at 15 40 30" src="https://github.com/user-attachments/assets/7cafc452-4f21-4202-8379-2a983ecbf122" />
-
 ## Available Endpoints
 
 > **_NOTE:_** The application offers the following endpoints on port **8080**
@@ -162,6 +160,13 @@ spec:
 ### `logToFileOnly`
 
 - **Description**: Log **only** to the file named `training-application.log`, if set to true no logging to stdout will happen
+- **Type**: bool
+- **Default Value**: false
+- **Usage**: via config file
+
+### `persistMetaInfo`
+
+- **Description**: Writes metainfo into the file `./data/metainfo.txt`. The metainfo has to be provided via the environment variables named `WORKER_NODE_NAME`, `POD_NAME` and `POD_IP`.
 - **Type**: bool
 - **Default Value**: false
 - **Usage**: via config file

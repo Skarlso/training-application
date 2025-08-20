@@ -1,0 +1,13 @@
+{{- if .Values.persistMetaInfo }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-application-pvc
+spec:
+  storageClassName: my-storageclass
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+{{- end }}

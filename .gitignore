@@ -2,3 +2,4 @@ training-application
 .DS_Store
 application.log
 /data/
+*.tgz

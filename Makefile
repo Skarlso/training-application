@@ -4,6 +4,7 @@ BUILD_VERSION = 4.0.0
 BUILD_VERSION_A = ${BUILD_VERSION}-A
 BUILD_VERSION_B = ${BUILD_VERSION}-B
 BUILD_VERSION_DISTROLESS = ${BUILD_VERSION}-distroless
+HELM_CHART_VERSION = 1.0.1
 
 .PHONY: update-dependencies
 update-dependencies: 
@@ -59,3 +60,8 @@ docker-push-all:
 	docker buildx build --push --platform linux/arm64,linux/amd64 -f docker/Dockerfile-A --tag ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION_A} .
 	docker buildx build --push --platform linux/arm64,linux/amd64 -f docker/Dockerfile-B --tag ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION_B} .
 	docker buildx build --push --platform linux/arm64,linux/amd64 -f docker/Dockerfile-distroless --tag ${IMAGE_REPOSITORY}/${APPLICATION_NAME}:${BUILD_VERSION_DISTROLESS} .
+
+.PHONY: helm-push
+helm-push:
+	helm package ./helm-chart --version ${HELM_CHART_VERSION}
+	helm push --debug training-application-${HELM_CHART_VERSION}.tgz oci://quay.io/kubermatic-labs/helm-charts/
